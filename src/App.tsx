@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || (
+  typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? ''
+    : 'https://sms-notification-backend.onrender.com'
+);
+
 // Types
 interface Campaign {
   id: number;
@@ -98,9 +104,9 @@ function App() {
 
   // Initial Load & Polling
   useEffect(() => {
-    fetch('/api/templates/stats').then(res => res.json()).then(data => setTemplateStats(data)).catch(console.error);
-    fetch('/api/offers').then(res => res.json()).then(data => setOffers(data)).catch(console.error);
-    fetch('/api/settings')
+    fetch(`${API_BASE}/api/templates/stats`).then(res => res.json()).then(data => setTemplateStats(data)).catch(console.error);
+    fetch(`${API_BASE}/api/offers`).then(res => res.json()).then(data => setOffers(data)).catch(console.error);
+    fetch(`${API_BASE}/api/settings`)
       .then(res => res.json())
       .then(data => {
         if (data.customerCareNumber) {
@@ -118,7 +124,7 @@ function App() {
     if (activeCampaign && (activeCampaign.status === 'PROCESSING' || activeCampaign.status === 'SCHEDULED')) {
       interval = setInterval(async () => {
         try {
-          const res = await fetch(`/api/campaigns/${activeCampaign.id}`);
+          const res = await fetch(`${API_BASE}/api/campaigns/${activeCampaign.id}`);
           if (res.ok) {
             const data = await res.json();
             setActiveCampaign(data);
@@ -136,9 +142,9 @@ function App() {
     formData.append('file', templateFile);
     setUploadStatus(prev => ({ ...prev, templates: 'UPLOADING...' }));
     try {
-      await fetch(`/api/upload/templates`, { method: 'POST', body: formData });
+      await fetch(`${API_BASE}/api/upload/templates`, { method: 'POST', body: formData });
       setUploadStatus(prev => ({ ...prev, templates: '✓ SYSTEM UPDATED' }));
-      fetch('/api/templates/stats').then(r => r.json()).then(d => setTemplateStats(d));
+      fetch(`${API_BASE}/api/templates/stats`).then(r => r.json()).then(d => setTemplateStats(d));
     } catch (err) {
       setUploadStatus(prev => ({ ...prev, templates: 'FAILED' }));
     }
@@ -151,11 +157,11 @@ function App() {
     formData.append('file', file);
     setUploadStatus(prev => ({ ...prev, [type]: 'UPLOADING...' }));
     try {
-      const res = await fetch(`/api/upload/${type}`, { method: 'POST', body: formData });
+      const res = await fetch(`${API_BASE}/api/upload/${type}`, { method: 'POST', body: formData });
       const data = await res.json();
       setUploadStatus(prev => ({ ...prev, [type]: `✓ ${data.count} RECORDS SECURED` }));
       if (type === 'offers') {
-        fetch('/api/offers').then(r => r.json()).then(d => setOffers(d));
+        fetch(`${API_BASE}/api/offers`).then(r => r.json()).then(d => setOffers(d));
       }
     } catch (err) {
       setUploadStatus(prev => ({ ...prev, [type]: 'FAILED' }));
@@ -164,7 +170,7 @@ function App() {
 
   const handleSaveCareSettings = async (careNum?: string, sendCare?: boolean, plat?: 'both' | 'whatsapp' | 'sms') => {
     try {
-      await fetch('/api/settings', {
+      await fetch(`${API_BASE}/api/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -183,7 +189,7 @@ function App() {
     setSingleStatus('DISPATCHING SINGLE MESSAGE...');
     setSingleDetails(null);
     try {
-      const res = await fetch('/api/sms/send-single', {
+      const res = await fetch(`${API_BASE}/api/sms/send-single`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -216,13 +222,13 @@ function App() {
         customerCareNumber: customerCareNumber,
         sendToCustomerCare: sendToCustomerCare
       };
-      const res = await fetch('/api/campaigns/start', {
+      const res = await fetch(`${API_BASE}/api/campaigns/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-      const statusRes = await fetch(`/api/campaigns/${data.campaignId}`);
+      const statusRes = await fetch(`${API_BASE}/api/campaigns/${data.campaignId}`);
       setActiveCampaign(await statusRes.json());
     } catch (err) { alert('Failed to launch'); }
   };
@@ -235,13 +241,13 @@ function App() {
     if (!manualOffer.code || !manualOffer.discount) return;
     setUploadStatus(prev => ({ ...prev, offers: 'ADDING...' }));
     try {
-      await fetch('/api/offers/create', {
+      await fetch(`${API_BASE}/api/offers/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(manualOffer)
       });
       setUploadStatus(prev => ({ ...prev, offers: '✓ OFFER ADDED' }));
-      fetch('/api/offers').then(r => r.json()).then(d => setOffers(d));
+      fetch(`${API_BASE}/api/offers`).then(r => r.json()).then(d => setOffers(d));
       setManualOffer({ code: '', discount: '', description: '' });
     } catch (err) {
       setUploadStatus(prev => ({ ...prev, offers: 'FAILED' }));
