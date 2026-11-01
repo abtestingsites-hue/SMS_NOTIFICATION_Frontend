@@ -1,1 +1,94 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #F6F7FB;
+    --surface: #FFFFFF;
+    --surface-secondary: #F7F8FC;
+    --primary: #5269D9;
+    --primary-hover: #4056C4;
+    --primary-light: #EEF1FC;
+    --text-primary: #20283A;
+    --text-secondary: #737D90;
+    --border: #E8EAF0;
+    --success: #16A36A;
+    --success-light: #E8F7F0;
+    --warning: #E5A23B;
+    --warning-light: #FDF6EC;
+    --danger: #D94D59;
+    --danger-light: #FDF0F1;
+    --info: #4388D8;
+    --info-light: #EEF5FC;
+
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+    background-color: var(--background);
+    color: var(--text-primary);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F4F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #D2D7E2;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #AAB3C4;
+}
+
+/* Glass & Card Micro-utilities */
+.enterprise-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E8EAF0;
+  border-radius: 0.75rem; /* 12px */
+  box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.03);
+  transition: all 0.15s ease-in-out;
+}
+
+.enterprise-card-hover:hover {
+  border-color: #D6DAE5;
+  box-shadow: 0 4px 12px 0 rgba(16, 24, 40, 0.05);
+}
+
+.badge-primary {
+  background-color: #EEF1FC;
+  color: #5269D9;
+  border: 1px solid #D9E0F8;
+}
+
+.badge-success {
+  background-color: #E8F7F0;
+  color: #16A36A;
+  border: 1px solid #C8EEDC;
+}
+
+.badge-warning {
+  background-color: #FDF6EC;
+  color: #E5A23B;
+  border: 1px solid #F8E3C3;
+}
+
+.badge-danger {
+  background-color: #FDF0F1;
+  color: #D94D59;
+  border: 1px solid #F9CFD3;
+}
