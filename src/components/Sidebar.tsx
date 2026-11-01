@@ -3,6 +3,7 @@ import type { NavModule } from '../types';
 import {
   LayoutDashboard,
   Send,
+  Wand2,
   Users,
   FileText,
   Image,
@@ -44,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { id: 'overview' as NavModule, label: 'Command Overview', icon: LayoutDashboard },
         { id: 'console' as NavModule, label: 'Campaign Console', icon: Send },
+        { id: 'builder' as NavModule, label: 'Visual Builder', icon: Wand2, badge: 'Phase 18' },
         { id: 'audience' as NavModule, label: 'Audience Registry', icon: Users },
         { id: 'templates' as NavModule, label: 'Message Templates', icon: FileText },
         { id: 'media' as NavModule, label: 'Media Library', icon: Image, badge: 'Durable' },

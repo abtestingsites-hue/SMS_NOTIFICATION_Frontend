@@ -9,12 +9,12 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://sms-notification-backend.onrender.com',
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
       },
       '/uploads': {
-        target: 'https://sms-notification-backend.onrender.com',
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
       },

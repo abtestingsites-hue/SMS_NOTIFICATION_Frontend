@@ -18,6 +18,7 @@ import { MetaCampaigns } from './components/MetaCampaigns';
 import { GoogleCampaigns } from './components/GoogleCampaigns';
 import { IntegrationConsole } from './components/IntegrationConsole';
 import { ChannelSettings } from './components/ChannelSettings';
+import { VisualCampaignBuilder } from './components/VisualCampaignBuilder';
 
 interface TemplateStat {
   category: string;
@@ -330,7 +331,11 @@ export default function App() {
         />
 
         {/* Dynamic Route Content */}
-        <main className={`flex-1 min-h-0 w-full mx-auto ${activeNav === 'overview' ? 'p-2.5 sm:p-3 lg:p-3 overflow-hidden flex flex-col' : 'p-4 sm:p-6 lg:p-8 overflow-y-auto'}`}>
+        <main className={`flex-1 min-h-0 w-full mx-auto ${
+          activeNav === 'overview' || activeNav === 'builder'
+            ? 'p-0 overflow-hidden flex flex-col'
+            : 'p-4 sm:p-6 lg:p-8 overflow-y-auto'
+        }`}>
           {/* Module 1: Command Overview Dashboard */}
           {activeNav === 'overview' && (
             <CommandOverview
@@ -365,6 +370,21 @@ export default function App() {
               attachedMedia={attachedMedia}
               setAttachedMedia={setAttachedMedia}
               setTemplate={setTemplate}
+            />
+          )}
+
+          {/* Module 2.5: Visual Campaign Builder (Phase 18) */}
+          {activeNav === 'builder' && (
+            <VisualCampaignBuilder
+              campaigns={campaigns}
+              offers={offers}
+              setActiveNav={setActiveNav}
+              onLaunchCampaignSuccess={(newCamp) => {
+                setActiveCampaign(newCamp);
+                setCampaigns(prev => [newCamp, ...prev]);
+                setActiveNav('console');
+              }}
+              customerCareNumber={customerCareNumber}
             />
           )}
 
@@ -435,7 +455,7 @@ export default function App() {
         </main>
 
         {/* Minimal Enterprise Footer (Visible on sub-modules) */}
-        {activeNav !== 'overview' && (
+        {activeNav !== 'overview' && activeNav !== 'builder' && (
           <footer className="mt-auto border-t border-[#E8EAF0] bg-white py-3 px-6 text-xs text-[#737D90] shrink-0">
             <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
               <p className="font-medium">SMS Campaign System · Enterprise Marketing Operations Suite</p>

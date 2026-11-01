@@ -3,6 +3,7 @@
 export type NavModule =
   | 'overview'
   | 'console'
+  | 'builder'
   | 'audience'
   | 'templates'
   | 'media'
@@ -107,6 +108,7 @@ export interface MediaAsset {
   caption?: string;
   tags: string[];
   references: string[];
+  dimensions?: { width: number; height: number };
 }
 
 // Scheduler
@@ -405,7 +407,10 @@ export interface ExtractedOfferData {
   confirmedAt?: string;
 
   // Flattened compatibility properties
+  brand?: string;
   businessName?: string;
+  helpline?: string;
+  ctaText?: string;
   terms?: string;
   campaignContext?: string;
   confidenceScores?: Record<string, number>;
@@ -465,5 +470,94 @@ export interface AIContentGeneration {
   createdAt: string;
   updatedAt: string;
 }
+
+// =========================================================================
+// Visual Campaign Builder Types (PHASE 18)
+// =========================================================================
+
+export type CampaignBlockType =
+  | 'headline'
+  | 'description'
+  | 'offer'
+  | 'coupon'
+  | 'cta'
+  | 'contact'
+  | 'personalization'
+  | 'optout'
+  | 'media';
+
+export interface CampaignContentBlock {
+  id: string;
+  type: CampaignBlockType;
+  label: string;
+  content: string;
+  order: number;
+  editable?: boolean;
+  metadata?: Record<string, any>;
+}
+
+export interface CampaignFollowUpStep {
+  id: string;
+  stage: 'INITIAL' | 'REMINDER' | 'REINFORCEMENT' | 'EXPIRY';
+  sequenceNumber: number;
+  scheduledInterval: string;
+  scheduledOffsetHours?: number;
+  messageBody: string;
+  channel: 'both' | 'whatsapp' | 'sms';
+  language: string;
+  eligibilityRule: 'ALL_ELIGIBLE' | 'NOT_REPLIED' | 'NOT_CONVERTED' | 'DELIVERED_ONLY';
+  approvalStatus: 'PENDING' | 'APPROVED';
+}
+
+export interface AudienceSummary {
+  totalSelected: number;
+  smsEligible: number;
+  whatsappEligible: number;
+  suppressed: number;
+  optedOut: number;
+  invalid: number;
+  languageBreakdown: Record<string, number>;
+  eligibleRecipients?: Customer[];
+}
+
+export interface VisualCampaignDraft {
+  id: string;
+  name: string;
+  description?: string;
+  status: 'DRAFT' | 'READY' | 'SCHEDULED' | 'LAUNCHED';
+  channel: 'both' | 'whatsapp' | 'sms';
+  creativeAssetId?: string | null;
+  creativeAsset?: MediaAsset | null;
+  contentBlocks: CampaignContentBlock[];
+  offerId?: string | number | null;
+  offer?: Offer | null;
+  audienceSelection: {
+    type: 'all' | 'segment' | 'filtered';
+    segmentName: string;
+    totalCount?: number;
+    smsEligibleCount?: number;
+    whatsappEligibleCount?: number;
+    suppressedCount?: number;
+    optedOutCount?: number;
+    languageBreakdown?: Record<string, number>;
+  };
+  languageConfig: {
+    selectedLanguages: string[];
+    defaultLanguage: string;
+    languageVariants: Record<string, string>;
+    languageApprovals: Record<string, boolean>;
+  };
+  scheduleConfig: {
+    mode: 'NOW' | 'SCHEDULED';
+    scheduledDate: string;
+    scheduledTime: string;
+    timezone: string;
+    followUps: CampaignFollowUpStep[];
+  };
+  geminiExtraction?: ExtractedOfferData | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 
 

@@ -19,7 +19,9 @@ import {
   Globe,
   Sparkles,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  Wand2,
+  ArrowRight
 } from 'lucide-react';
 
 interface CampaignConsoleProps {
@@ -391,6 +393,31 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
           <div className="text-lg font-bold text-[#E5A23B] mt-0.5">{totalFailed}</div>
           <span className="text-[10px] text-[#737D90]">Unverified / Rebuffed</span>
         </div>
+      </div>
+
+      {/* Visual Campaign Builder Banner (Phase 18) */}
+      <div className="bg-gradient-to-r from-[#5269D9]/10 via-indigo-50 to-purple-50 rounded-xl border border-[#D6DCF0] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#5269D9] text-white flex items-center justify-center shadow-xs shrink-0">
+            <Wand2 className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-[#20283A]">Visual Campaign Builder & Bulk Launch</h3>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#5269D9] text-white">PHASE 18</span>
+            </div>
+            <p className="text-xs text-[#737D90] mt-0.5">
+              Drag-and-drop workspace, Gemini Vision OCR extraction, 6 regional languages & automated multi-stage follow-ups.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setActiveNav('builder')}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#5269D9] hover:bg-[#4357c5] text-white text-xs font-bold shadow-xs hover:shadow transition-all shrink-0 cursor-pointer"
+        >
+          <span>Open Visual Builder</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* Active Campaign Status Monitor Card */}

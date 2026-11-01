@@ -19,7 +19,9 @@ import type {
   GeneratedTemplateVariant,
   CampaignFollowUpContent,
   ExtractedOfferData,
-  TemplateTone
+  TemplateTone,
+  VisualCampaignDraft,
+  AudienceSummary
 } from '../types';
 
 export const API_BASE = (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_BASE_URL || (
@@ -561,5 +563,38 @@ export const api = {
 
   async getGeminiStatus(): Promise<{ configured: boolean; model: string; fallbackModels: string[]; auditLogsCount: number }> {
     return fetchJson('/api/ai-templates/gemini-status');
+  },
+
+  // 12. Visual Campaign Builder APIs (PHASE 18)
+  async getBuilderDrafts(): Promise<VisualCampaignDraft[]> {
+    return fetchJson<VisualCampaignDraft[]>('/api/campaign-builder/drafts');
+  },
+
+  async getBuilderDraft(id: string): Promise<VisualCampaignDraft> {
+    return fetchJson<VisualCampaignDraft>(`/api/campaign-builder/drafts/${id}`);
+  },
+
+  async saveBuilderDraft(draft: Partial<VisualCampaignDraft>): Promise<{ success: boolean; draft: VisualCampaignDraft }> {
+    return fetchJson('/api/campaign-builder/drafts', {
+      method: 'POST',
+      body: JSON.stringify(draft)
+    });
+  },
+
+  async deleteBuilderDraft(id: string): Promise<{ success: boolean; deletedId: string }> {
+    return fetchJson(`/api/campaign-builder/drafts/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async getAudienceSummary(segment = 'All'): Promise<AudienceSummary> {
+    return fetchJson<AudienceSummary>(`/api/campaign-builder/audience-summary?segment=${encodeURIComponent(segment)}`);
+  },
+
+  async launchBuilderCampaign(payload: any): Promise<{ success: boolean; campaignId: number; campaign: any; stats: any }> {
+    return fetchJson('/api/campaign-builder/launch', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
   }
 };

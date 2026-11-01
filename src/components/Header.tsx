@@ -16,6 +16,7 @@ interface HeaderProps {
 const moduleTitles: Record<NavModule, { title: string; category: string }> = {
   overview: { title: 'Command Overview', category: 'Operations' },
   console: { title: 'Campaign Console & Dispatch', category: 'Messaging' },
+  builder: { title: 'Visual Campaign Builder', category: 'Studio' },
   audience: { title: 'Audience Registry', category: 'Contacts' },
   templates: { title: 'Message Templates', category: 'Studio' },
   media: { title: 'Media Library', category: 'Assets' },
