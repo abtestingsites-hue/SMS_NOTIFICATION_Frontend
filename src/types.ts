@@ -43,8 +43,31 @@ export interface Campaign {
   targetAudience?: string;
   platform?: 'both' | 'whatsapp' | 'sms';
   template?: string;
+  mediaId?: string | null;
+  mediaAsset?: MediaAsset | null;
+  mediaEnabled?: boolean;
+  mediaType?: MediaType | null;
   customerCareNumber?: string;
   sendToCustomerCare?: boolean;
+}
+
+export interface SavedTemplate {
+  id: string;
+  name: string;
+  body: string;
+  channel: 'both' | 'whatsapp' | 'sms';
+  mediaId?: string | null;
+  mediaAsset?: MediaAsset | null;
+  category?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TemplateConfig {
+  template: string;
+  mediaId?: string | null;
+  mediaAsset?: MediaAsset | null;
+  channel: 'both' | 'whatsapp' | 'sms';
 }
 
 export interface CategoryTemplates {

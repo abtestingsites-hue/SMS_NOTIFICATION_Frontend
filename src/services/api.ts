@@ -12,7 +12,9 @@ import type {
   IntegrationStatusResponse,
   SuppressionRecord,
   GovernanceRules,
-  InAppNotification
+  InAppNotification,
+  SavedTemplate,
+  TemplateConfig
 } from '../types';
 
 export const API_BASE = (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_BASE_URL || (
@@ -82,13 +84,28 @@ export const api = {
   },
 
   // 3. Templates Studio
-  async getTemplate(): Promise<{ template: string }> {
+  async getTemplate(): Promise<TemplateConfig> {
     return fetchJson('/api/template');
   },
-  async saveTemplate(template: string): Promise<{ message: string; template: string }> {
+  async saveTemplate(payload: string | { template?: string; mediaId?: string | null; mediaAsset?: MediaAsset | null; channel?: string }): Promise<{ message: string; template: string; mediaId?: string | null; mediaAsset?: MediaAsset | null; channel?: string }> {
+    const body = typeof payload === 'string' ? { template: payload } : payload;
     return fetchJson('/api/template', {
       method: 'POST',
-      body: JSON.stringify({ template })
+      body: JSON.stringify(body)
+    });
+  },
+  async getSavedTemplates(): Promise<SavedTemplate[]> {
+    return fetchJson('/api/templates/saved');
+  },
+  async saveSavedTemplate(template: Partial<SavedTemplate>): Promise<{ message: string; template: SavedTemplate }> {
+    return fetchJson('/api/templates/saved', {
+      method: 'POST',
+      body: JSON.stringify(template)
+    });
+  },
+  async deleteSavedTemplate(id: string): Promise<{ message: string; id: string }> {
+    return fetchJson(`/api/templates/saved/${id}`, {
+      method: 'DELETE'
     });
   },
   async getCategoryTemplates(): Promise<CategoryTemplates> {
@@ -124,6 +141,7 @@ export const api = {
     template?: string;
     recipientName?: string;
     offerCode?: string;
+    mediaId?: string;
   }): Promise<{ success: boolean; message: string; details: any }> {
     return fetchJson('/api/sms/send-single', {
       method: 'POST',
@@ -151,6 +169,8 @@ export const api = {
     sendToCustomerCare?: boolean;
     platform?: string;
     template?: string;
+    mediaId?: string;
+    mediaAsset?: MediaAsset;
   }): Promise<{ message: string; campaignId: number; platform: string }> {
     return fetchJson('/api/campaigns/start', {
       method: 'POST',

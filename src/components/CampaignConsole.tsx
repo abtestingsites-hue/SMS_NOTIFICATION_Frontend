@@ -1,15 +1,21 @@
-import React, { useState, useMemo } from 'react';
-import type { NavModule, Campaign, Offer } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import type { NavModule, Campaign, Offer, MediaAsset, SavedTemplate } from '../types';
+import { api, API_BASE } from '../services/api';
 import { toast } from '../services/toast';
 import { StatusBadge } from './ui/StatusBadge';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { MediaPickerModal } from './ui/MediaPickerModal';
 import {
   Send,
   MessageSquare,
   Smartphone,
   Layers,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Paperclip,
+  Trash2,
+  Plus,
+  FileText
 } from 'lucide-react';
 
 interface CampaignConsoleProps {
@@ -22,8 +28,10 @@ interface CampaignConsoleProps {
     validUntil: string;
     delayHours: number;
     offerCode?: string;
+    mediaId?: string;
+    mediaAsset?: MediaAsset;
   }) => Promise<void>;
-  onSendSingleMessage: (recipient: string, platform: 'both' | 'whatsapp' | 'sms') => Promise<{ success: boolean; message: string; details?: any }>;
+  onSendSingleMessage: (recipient: string, platform: 'both' | 'whatsapp' | 'sms', mediaId?: string) => Promise<{ success: boolean; message: string; details?: any }>;
   customerCareNumber: string;
   setCustomerCareNumber: (num: string) => void;
   sendToCustomerCare: boolean;
@@ -34,6 +42,9 @@ interface CampaignConsoleProps {
   offers: Offer[];
   setActiveNav: (nav: NavModule) => void;
   onSaveCareSettings: (num?: string, send?: boolean, plat?: 'both' | 'whatsapp' | 'sms') => void;
+  attachedMedia?: MediaAsset | null;
+  setAttachedMedia?: (asset: MediaAsset | null) => void;
+  setTemplate?: (text: string) => void;
 }
 
 export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
@@ -50,12 +61,35 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
   template,
   offers,
   setActiveNav,
-  onSaveCareSettings
+  onSaveCareSettings,
+  attachedMedia: propAttachedMedia,
+  setAttachedMedia: propSetAttachedMedia,
+  setTemplate: propSetTemplate
 }) => {
   const [campaignName, setCampaignName] = useState('Exclusive Spring Promotion');
   const [targetAudience, setTargetAudience] = useState('All');
   const [validUntil, setValidUntil] = useState('2026-08-15');
   const [scheduleDelay, setScheduleDelay] = useState(0);
+
+  // Attached media state (with fallback to local state)
+  const [internalMedia, setInternalMedia] = useState<MediaAsset | null>(null);
+  const attachedMedia = propAttachedMedia !== undefined ? propAttachedMedia : internalMedia;
+  const setAttachedMedia = propSetAttachedMedia || setInternalMedia;
+
+  // Saved templates from library
+  const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('active');
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+
+  // Device preview channel
+  const [previewChannel, setPreviewChannel] = useState<'whatsapp' | 'sms'>('whatsapp');
+
+  useEffect(() => {
+    api.getSavedTemplates().then(list => {
+      if (Array.isArray(list)) setSavedTemplates(list);
+    }).catch(() => {});
+  }, []);
+
   const uniqueOffers = useMemo(() => {
     const seen = new Set<string>();
     return offers.filter(o => {
@@ -96,6 +130,29 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
     description: 'Special Privilege'
   };
 
+  const handleTemplateSelection = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    if (templateId === 'active') {
+      return;
+    }
+    const found = savedTemplates.find(t => String(t.id) === String(templateId));
+    if (found) {
+      if (propSetTemplate) propSetTemplate(found.body);
+      if (found.channel) {
+        setPlatform(found.channel);
+        onSaveCareSettings(undefined, undefined, found.channel);
+      }
+      if (found.mediaAsset) {
+        setAttachedMedia(found.mediaAsset);
+      } else {
+        setAttachedMedia(null);
+      }
+      toast.info('Template Applied', {
+        description: `Applied "${found.name}" with channel and media attachments.`
+      });
+    }
+  };
+
   // Preview text with dynamic tokens
   const renderPreview = () => {
     let text = template || "Hi {{1}} 👋\n\n✨ *Exclusive Offer Just for You!* ✨\n\n{{2}}\n\n⏰ *Offer Valid Until:* {{3}}\n\nCome and get it soon! 🛍️🔥\n\nReply *STOP* to opt out.";
@@ -108,7 +165,9 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
   };
 
   const previewText = renderPreview();
-  const charCount = previewText.length;
+  const shortlink = attachedMedia ? `\n\nMedia: https://campaigns.reach/m/${attachedMedia.id.slice(-6)}` : '';
+  const fullSmsText = `${previewText}${shortlink}`;
+  const charCount = previewChannel === 'sms' ? fullSmsText.length : previewText.length;
   const smsSegments = Math.ceil(charCount / 160) || 1;
 
   const handleConfirmLaunch = async () => {
@@ -120,10 +179,12 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
         targetAudience,
         validUntil,
         delayHours: scheduleDelay,
-        offerCode: selectedOfferCode
+        offerCode: selectedOfferCode,
+        mediaId: attachedMedia?.id,
+        mediaAsset: attachedMedia || undefined
       });
       toast.success('Broadcast Campaign Dispatched', {
-        description: `Campaign "${campaignName || 'Broadcast'}" launched on ${platform.toUpperCase()}.`
+        description: `Campaign "${campaignName || 'Broadcast'}" launched on ${platform.toUpperCase()}${attachedMedia ? ' with media attached' : ''}.`
       });
       setIsConfirmOpen(false);
     } catch (e: any) {
@@ -139,11 +200,11 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
     setIsSendingSingle(true);
     setSingleResult(null);
     try {
-      const res = await onSendSingleMessage(singleRecipient, platform);
+      const res = await onSendSingleMessage(singleRecipient, platform, attachedMedia?.id);
       setSingleResult(res);
       if (res.success) {
         toast.success('Test Message Dispatched', {
-          description: `Dispatched to ${singleRecipient} via ${platform.toUpperCase()}.`
+          description: `Dispatched to ${singleRecipient} via ${platform.toUpperCase()}${attachedMedia ? ' (Media verified)' : ''}.`
         });
       } else {
         toast.error('Test Dispatch Failed', {
@@ -156,6 +217,14 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
     } finally {
       setIsSendingSingle(false);
     }
+  };
+
+  const formatSize = (bytes?: number) => {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
   };
 
   return (
@@ -228,12 +297,39 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Campaign Configuration */}
         <div className="lg:col-span-6 bg-white rounded-xl border border-[#E8EAF0] p-5 sm:p-6 shadow-xs space-y-5">
-          <div className="border-b border-[#E8EAF0] pb-3">
-            <h3 className="text-sm font-bold text-[#20283A]">Campaign Configuration</h3>
-            <p className="text-xs text-[#737D90]">Set campaign identifier, dispatch channels, audience, and offer</p>
+          <div className="border-b border-[#E8EAF0] pb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-[#20283A]">Campaign Configuration</h3>
+              <p className="text-xs text-[#737D90]">Configure audience, template, media, and channels</p>
+            </div>
+            <button
+              onClick={() => setActiveNav('templates')}
+              className="text-xs text-[#5269D9] hover:underline font-semibold cursor-pointer"
+            >
+              Template Studio →
+            </button>
           </div>
 
           <div className="space-y-4">
+            {/* Template Selector Dropdown */}
+            <div>
+              <label className="block text-xs font-semibold text-[#20283A] mb-1">
+                Message Template Source
+              </label>
+              <select
+                value={selectedTemplateId}
+                onChange={e => handleTemplateSelection(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg text-[#20283A] focus:outline-none focus:border-[#5269D9] focus:bg-white cursor-pointer"
+              >
+                <option value="active">Active Studio Template (Current Default)</option>
+                {savedTemplates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} [{t.channel.toUpperCase()}]{t.mediaAsset ? ' 📎 Media' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Campaign Name */}
             <div>
               <label className="block text-xs font-semibold text-[#20283A] mb-1">
@@ -285,6 +381,80 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
                   <span>Cellular SMS</span>
                 </button>
               </div>
+            </div>
+
+            {/* Media Attachment Control */}
+            <div className="border border-[#E8EAF0] rounded-xl p-3 bg-[#F7F8FC] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Paperclip className="w-4 h-4 text-[#5269D9]" />
+                  <span className="text-xs font-bold text-[#20283A]">Campaign Media Attachment</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMediaModalOpen(true)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#E8EAF0] hover:border-[#5269D9] text-[#5269D9] rounded-lg text-xs font-semibold cursor-pointer transition-colors shadow-2xs"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>{attachedMedia ? 'Change Asset' : 'Attach Media'}</span>
+                </button>
+              </div>
+
+              {attachedMedia ? (
+                <div className="bg-white border border-[#D9E0F8] rounded-xl p-2.5 flex items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="w-10 h-10 rounded-lg bg-[#F7F8FC] border border-[#E8EAF0] flex items-center justify-center shrink-0 overflow-hidden">
+                      {attachedMedia.mediaType === 'image' ? (
+                        <img
+                          src={
+                            attachedMedia.assetStreamUrl?.startsWith('http')
+                              ? attachedMedia.assetStreamUrl
+                              : `${API_BASE}${attachedMedia.assetStreamUrl || `/api/media/asset/${attachedMedia.id}`}`
+                          }
+                          alt={attachedMedia.originalName}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <FileText className="w-5 h-5 text-[#5269D9]" />
+                      )}
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="text-xs font-bold text-[#20283A] truncate">{attachedMedia.originalName}</p>
+                      <div className="flex items-center gap-2 text-[10px] text-[#737D90]">
+                        <span className="uppercase font-mono font-medium">{attachedMedia.mediaType}</span>
+                        <span>{formatSize(attachedMedia.size)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAttachedMedia(null)}
+                    title="Remove attachment"
+                    className="p-1.5 text-[#DC2626] hover:bg-[#FDF2F2] rounded-lg transition-colors cursor-pointer shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="text-[11px] text-[#737D90] italic">
+                  No media attached to this broadcast. Text-only delivery will be dispatched.
+                </div>
+              )}
+
+              {attachedMedia && (
+                <div className="text-[10px] text-[#5269D9] bg-[#EEF1FC]/60 border border-[#D9E0F8] rounded-lg p-1.5">
+                  {platform === 'whatsapp' ? (
+                    'Delivered as native WhatsApp media card via Twilio API.'
+                  ) : platform === 'sms' ? (
+                    'Delivered with tracked shortlink (/api/m/:id) for guaranteed cellular carrier delivery.'
+                  ) : (
+                    'Hybrid: Native WhatsApp media + SMS tracked shortlink.'
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Audience & Expiry Grid */}
@@ -412,12 +582,26 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
                 <h3 className="text-sm font-bold text-[#20283A]">Live Device Preview</h3>
                 <p className="text-xs text-[#737D90]">Chat bubble simulation with dynamic tokens</p>
               </div>
-              <button
-                onClick={() => setActiveNav('templates')}
-                className="text-xs text-[#5269D9] hover:underline font-semibold cursor-pointer"
-              >
-                Template Studio →
-              </button>
+              <div className="flex items-center gap-1 bg-[#F7F8FC] p-0.5 rounded-lg border border-[#E8EAF0]">
+                <button
+                  type="button"
+                  onClick={() => setPreviewChannel('whatsapp')}
+                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
+                    previewChannel === 'whatsapp' ? 'bg-[#16A36A] text-white' : 'text-[#737D90] hover:text-[#20283A]'
+                  }`}
+                >
+                  WhatsApp
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewChannel('sms')}
+                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
+                    previewChannel === 'sms' ? 'bg-[#4388D8] text-white' : 'text-[#737D90] hover:text-[#20283A]'
+                  }`}
+                >
+                  Cellular SMS
+                </button>
+              </div>
             </div>
 
             {/* Simulated Phone Shell */}
@@ -425,7 +609,7 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
               <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-[#E8EAF0] text-xs">
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-[#EEF1FC] text-[#5269D9]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#5269D9]" />
-                  {platform === 'both' ? 'Dual: WhatsApp + SMS' : platform === 'whatsapp' ? 'WhatsApp' : 'Cellular SMS'}
+                  {previewChannel === 'whatsapp' ? 'WhatsApp Native Rendering' : 'SMS Cellular Rendering'}
                 </span>
                 <span className="text-[11px] text-[#737D90]">
                   {charCount} chars · ~{smsSegments} SMS {smsSegments > 1 ? 'segments' : 'segment'}
@@ -440,10 +624,41 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
                     </span>
                   </div>
 
-                  <div className="bg-white text-[#20283A] rounded-xl rounded-tl-xs p-3.5 shadow-2xs border border-[#E8EAF0]">
+                  <div className="bg-white text-[#20283A] rounded-xl rounded-tl-xs p-3.5 shadow-2xs border border-[#E8EAF0] space-y-2">
+                    {/* Media Card if Attached */}
+                    {attachedMedia && previewChannel === 'whatsapp' && (
+                      <div className="rounded-xl overflow-hidden border border-[#A7E2BE] bg-[#F7F8FC]">
+                        {attachedMedia.mediaType === 'image' ? (
+                          <img
+                            src={
+                              attachedMedia.assetStreamUrl?.startsWith('http')
+                                ? attachedMedia.assetStreamUrl
+                                : `${API_BASE}${attachedMedia.assetStreamUrl || `/api/media/asset/${attachedMedia.id}`}`
+                            }
+                            alt="Media Preview"
+                            className="w-full h-36 object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="p-3 flex items-center gap-2 text-xs font-bold text-[#20283A]">
+                            <FileText className="w-5 h-5 text-[#5269D9]" />
+                            <span>{attachedMedia.originalName}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <p className="text-xs text-[#20283A] leading-relaxed whitespace-pre-wrap font-sans">
                       {previewText}
+                      {attachedMedia && previewChannel === 'sms' && (
+                        <span className="block mt-2 text-[#4388D8] underline font-mono text-[11px]">
+                          {shortlink.trim()}
+                        </span>
+                      )}
                     </p>
+
                     <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-[#737D90]">
                       <span>To: Alexander Wright</span>
                       <div className="flex items-center gap-1">
@@ -483,7 +698,7 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
             </div>
 
             <p className="text-xs text-[#737D90]">
-              Dispatch one message to verify carrier delivery before launching to the whole database.
+              Dispatch one message to verify carrier delivery and media reachability before launching to the whole database.
             </p>
 
             <div className="flex gap-2">
@@ -537,6 +752,7 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
                 <th className="py-2.5 px-3">Campaign Name</th>
                 <th className="py-2.5 px-3">Segment</th>
                 <th className="py-2.5 px-3">Gateway</th>
+                <th className="py-2.5 px-3">Media</th>
                 <th className="py-2.5 px-3">Dispatched</th>
                 <th className="py-2.5 px-3">Status</th>
                 <th className="py-2.5 px-3 text-right">Date</th>
@@ -551,6 +767,16 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
                     <span className="font-mono text-[10px] bg-[#EEF1FC] text-[#5269D9] px-2 py-0.5 rounded font-semibold uppercase">
                       {c.platform || 'both'}
                     </span>
+                  </td>
+                  <td className="py-2.5 px-3">
+                    {c.mediaId || c.mediaAsset ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#E8F7F0] text-[#16A36A] flex items-center gap-1 w-fit">
+                        <Paperclip className="w-2.5 h-2.5" />
+                        <span>Media</span>
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-[#737D90]">None</span>
+                    )}
                   </td>
                   <td className="py-2.5 px-3 font-mono font-semibold text-[#20283A]">
                     {c.sent || (c.status === 'COMPLETED' ? c.total : 0)} / {c.total}
@@ -572,12 +798,25 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
       <ConfirmDialog
         isOpen={isConfirmOpen}
         title="Confirm Outbound Campaign Launch"
-        description={`Are you sure you want to broadcast "${campaignName}" to ${targetAudience} via ${platform.toUpperCase()}? Messages will immediately enqueue.`}
+        description={`Are you sure you want to broadcast "${campaignName}" to ${targetAudience} via ${platform.toUpperCase()}${attachedMedia ? ' with attached media' : ''}? Messages will immediately enqueue.`}
         confirmLabel="Confirm & Broadcast"
         cancelLabel="Review Settings"
         onConfirm={handleConfirmLaunch}
         onCancel={() => setIsConfirmOpen(false)}
         isLoading={isLaunching}
+      />
+
+      {/* Media Picker Modal */}
+      <MediaPickerModal
+        isOpen={isMediaModalOpen}
+        onClose={() => setIsMediaModalOpen(false)}
+        selectedAssetId={attachedMedia?.id}
+        onSelect={(asset) => {
+          setAttachedMedia(asset);
+          toast.success('Media Attached to Campaign', {
+            description: `Attached "${asset.originalName}". Channel payload updated.`
+          });
+        }}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { NavModule, IntegrationStatusResponse, Campaign, Offer, InAppNotification } from './types';
+import type { NavModule, IntegrationStatusResponse, Campaign, Offer, InAppNotification, MediaAsset } from './types';
 import { api } from './services/api';
 import { toast } from './services/toast';
 import { Toaster } from 'sonner';
@@ -43,6 +43,7 @@ export default function App() {
   const [template, setTemplate] = useState<string>(
     `Hi {{1}} 👋\n\n✨ *Exclusive Special Offer Just for You!* ✨\n\n{{2}}\n\n⏰ *Offer Valid Until:* {{3}}\n\nTake advantage of this limited-time opportunity today!\nFor assistance, contact customer care at {{care_number}}.\n\nReply *STOP* to opt out.`
   );
+  const [attachedMedia, setAttachedMedia] = useState<MediaAsset | null>(null);
   const [templateStats, setTemplateStats] = useState<TemplateStat[]>([]);
 
   // Offer State
@@ -94,8 +95,9 @@ export default function App() {
       api.getCampaigns().catch(() => []),
       api.getCustomers().catch(() => []),
       api.getNotifications({ limit: 50 }).catch(() => []),
-      api.getUnreadNotificationCount().catch(() => ({ unreadCount: 0 }))
-    ]).then(([statsData, offersData, settingsData, vaultData, campaignsData, customersData, notifsData, countData]) => {
+      api.getUnreadNotificationCount().catch(() => ({ unreadCount: 0 })),
+      api.getTemplate().catch(() => null)
+    ]).then(([statsData, offersData, settingsData, vaultData, campaignsData, customersData, notifsData, countData, templateConfig]) => {
       if (!isMounted) return;
       if (Array.isArray(statsData)) setTemplateStats(statsData);
       if (Array.isArray(offersData)) setOffers(offersData);
@@ -104,6 +106,11 @@ export default function App() {
       if (Array.isArray(customersData)) setAudienceCount(customersData.length);
       if (Array.isArray(notifsData)) setNotifications(notifsData);
       if (countData && typeof countData.unreadCount === 'number') setUnreadNotifCount(countData.unreadCount);
+      if (templateConfig) {
+        if (templateConfig.template) setTemplate(templateConfig.template);
+        if (templateConfig.mediaAsset) setAttachedMedia(templateConfig.mediaAsset);
+        if (templateConfig.channel) setPlatform(templateConfig.channel);
+      }
 
       if (settingsData) {
         if (settingsData.customerCareNumber) setCustomerCareNumber(settingsData.customerCareNumber);
@@ -168,6 +175,8 @@ export default function App() {
     validUntil: string;
     delayHours: number;
     offerCode?: string;
+    mediaId?: string;
+    mediaAsset?: MediaAsset;
   }) => {
     const data = await api.startCampaign({
       name: params.name || 'Marketing Campaign',
@@ -177,7 +186,9 @@ export default function App() {
       customerCareNumber,
       sendToCustomerCare,
       platform: params.platform,
-      template
+      template,
+      mediaId: params.mediaId,
+      mediaAsset: params.mediaAsset
     });
 
     const newCamp: Campaign = {
@@ -190,6 +201,9 @@ export default function App() {
       platform: (data.platform as 'both' | 'whatsapp' | 'sms') || params.platform,
       targetAudience: params.targetAudience,
       validUntil: params.validUntil,
+      mediaId: params.mediaId || null,
+      mediaAsset: params.mediaAsset || null,
+      mediaEnabled: Boolean(params.mediaId),
       customerCareNumber,
       sendToCustomerCare
     };
@@ -200,12 +214,13 @@ export default function App() {
   };
 
   // Pre-flight Single Carrier Test
-  const handleSendSingleMessage = async (recipient: string, testPlatform: 'both' | 'whatsapp' | 'sms') => {
+  const handleSendSingleMessage = async (recipient: string, testPlatform: 'both' | 'whatsapp' | 'sms', mediaId?: string) => {
     const data = await api.sendSingleMessage({
       recipient,
       platform: testPlatform,
       template,
-      recipientName: 'Valued Client'
+      recipientName: 'Valued Client',
+      mediaId
     });
     showToast(data.message || 'Single test message dispatch complete.');
     return data;
@@ -261,11 +276,18 @@ export default function App() {
     refreshCoreData();
   };
 
-  // Save Template Text
-  const handleSaveTemplate = async (text: string) => {
-    await api.saveTemplate(text);
+  // Save Template Text & Media Settings
+  const handleSaveTemplate = async (text: string, media?: MediaAsset | null, channel?: 'both' | 'whatsapp' | 'sms') => {
+    await api.saveTemplate({
+      template: text,
+      mediaId: media?.id || null,
+      mediaAsset: media || null,
+      channel: channel || platform
+    });
     setTemplate(text);
-    showToast('Template body saved.');
+    if (media !== undefined) setAttachedMedia(media);
+    if (channel) setPlatform(channel);
+    showToast('Template and media attachments saved.');
   };
 
   return (
@@ -340,6 +362,9 @@ export default function App() {
               offers={offers}
               setActiveNav={setActiveNav}
               onSaveCareSettings={handleSaveCareSettings}
+              attachedMedia={attachedMedia}
+              setAttachedMedia={setAttachedMedia}
+              setTemplate={setTemplate}
             />
           )}
 
@@ -360,6 +385,10 @@ export default function App() {
               onUploadTemplates={handleUploadTemplates}
               onSaveTemplate={handleSaveTemplate}
               customerCareNumber={customerCareNumber}
+              attachedMedia={attachedMedia}
+              setAttachedMedia={setAttachedMedia}
+              selectedChannel={platform}
+              setSelectedChannel={setPlatform}
             />
           )}
 
