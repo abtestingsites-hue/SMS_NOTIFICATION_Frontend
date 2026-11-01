@@ -66,6 +66,18 @@ export const api = {
     if (!res.ok) throw new Error('Customer upload failed');
     return res.json();
   },
+  async updateCustomerLanguage(customerId: number | string, language: string): Promise<{ success: boolean; customer: Customer }> {
+    return fetchJson(`/api/customers/${customerId}/language`, {
+      method: 'PATCH',
+      body: JSON.stringify({ language })
+    });
+  },
+  async updateSegmentLanguage(segment: string, language: string): Promise<{ success: boolean; updatedCount: number }> {
+    return fetchJson('/api/customers/segment-language', {
+      method: 'POST',
+      body: JSON.stringify({ segment, language })
+    });
+  },
 
   // 2. Offer APIs
   async getOffers(): Promise<Offer[]> {
@@ -509,6 +521,13 @@ export const api = {
     return fetchJson(`/api/ai-templates/${id}/approve`, {
       method: 'POST',
       body: JSON.stringify({ variantId, approveAll })
+    });
+  },
+
+  async validateLanguageApproval(generationId: string, requiredLanguages: string[]): Promise<{ valid: boolean; missingOrUnapproved?: any[]; error?: string }> {
+    return fetchJson(`/api/ai-templates/${generationId}/validate-approval`, {
+      method: 'POST',
+      body: JSON.stringify({ requiredLanguages })
     });
   },
 

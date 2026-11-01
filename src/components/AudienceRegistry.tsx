@@ -12,8 +12,18 @@ import {
   ShieldAlert,
   Smartphone,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  Globe
 } from 'lucide-react';
+
+const REGIONAL_LANGUAGES = [
+  { code: 'tamil', langCode: 'ta', label: 'Tamil', native: 'தமிழ்' },
+  { code: 'telugu', langCode: 'te', label: 'Telugu', native: 'తెలుగు' },
+  { code: 'kannada', langCode: 'kn', label: 'Kannada', native: 'ಕನ್ನಡ' },
+  { code: 'malayalam', langCode: 'ml', label: 'Malayalam', native: 'മലയാളം' },
+  { code: 'hindi', langCode: 'hi', label: 'Hindi', native: 'हिन्दी' },
+  { code: 'marathi', langCode: 'mr', label: 'Marathi', native: 'मराठी' }
+];
 
 interface AudienceRegistryProps {
   audienceCount: number;
@@ -65,6 +75,40 @@ export const AudienceRegistry: React.FC<AudienceRegistryProps> = ({
   useEffect(() => {
     fetchAudience();
   }, []);
+
+  const [segmentLangTarget, setSegmentLangTarget] = useState<'All' | 'Men' | 'Women'>('All');
+  const [selectedSegmentLanguage, setSelectedSegmentLanguage] = useState<string>('tamil');
+  const [isUpdatingSegmentLang, setIsUpdatingSegmentLang] = useState(false);
+
+  const handleApplySegmentLanguage = async () => {
+    setIsUpdatingSegmentLang(true);
+    try {
+      const res = await api.updateSegmentLanguage(segmentLangTarget, selectedSegmentLanguage);
+      toast.success('Segment Language Assigned', {
+        description: `Assigned ${selectedSegmentLanguage.toUpperCase()} to ${res.updatedCount} ${segmentLangTarget} profile(s).`
+      });
+      await fetchAudience();
+    } catch (err: any) {
+      toast.error('Assignment Failed', { description: err.message });
+    } finally {
+      setIsUpdatingSegmentLang(false);
+    }
+  };
+
+  const handleCustomerLanguageChange = async (customerId: number | string, language: string) => {
+    try {
+      const res = await api.updateCustomerLanguage(customerId, language);
+      if (res.success) {
+        setCustomers(prev => prev.map(c => String(c.id) === String(customerId) ? { ...c, language } : c));
+        const langObj = REGIONAL_LANGUAGES.find(l => l.code === language);
+        toast.success('Language Preference Updated', {
+          description: `Assigned ${langObj?.label || language} (${langObj?.native || ''}) to contact profile.`
+        });
+      }
+    } catch (err: any) {
+      toast.error('Language Update Failed', { description: err.message });
+    }
+  };
 
   const handleProcessUpload = async () => {
     if (!file) return;
@@ -299,6 +343,60 @@ export const AudienceRegistry: React.FC<AudienceRegistryProps> = ({
         </div>
       </div>
 
+      {/* Segment-Level Regional Language Assignment */}
+      <div className="bg-white rounded-xl border border-[#E8EAF0] p-4 sm:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-[#5269D9]" />
+            <h3 className="text-xs font-bold text-[#20283A] uppercase tracking-wider">
+              Segment Regional Language Assignment
+            </h3>
+          </div>
+          <p className="text-xs text-[#737D90]">
+            Assign default regional language routing to demographic segments (Tamil, Telugu, Kannada, Malayalam, Hindi, Marathi)
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-[#737D90] font-medium">Segment:</span>
+            <select
+              value={segmentLangTarget}
+              onChange={e => setSegmentLangTarget(e.target.value as any)}
+              className="bg-[#F7F8FC] border border-[#E8EAF0] text-[#20283A] text-xs font-semibold rounded-lg px-2.5 py-1.5 cursor-pointer focus:outline-none focus:border-[#5269D9]"
+            >
+              <option value="All">All Profiles ({segmentStats.total})</option>
+              <option value="Men">Men ({segmentStats.men})</option>
+              <option value="Women">Women ({segmentStats.women})</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-[#737D90] font-medium">Target Language:</span>
+            <select
+              value={selectedSegmentLanguage}
+              onChange={e => setSelectedSegmentLanguage(e.target.value)}
+              className="bg-[#F7F8FC] border border-[#E8EAF0] text-[#5269D9] text-xs font-bold rounded-lg px-2.5 py-1.5 cursor-pointer focus:outline-none focus:border-[#5269D9]"
+            >
+              {REGIONAL_LANGUAGES.map(lang => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.label} ({lang.native} - {lang.langCode})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleApplySegmentLanguage}
+            disabled={isUpdatingSegmentLang}
+            className="px-3.5 py-1.5 bg-[#5269D9] hover:bg-[#4056C4] text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors shadow-2xs disabled:opacity-50"
+          >
+            {isUpdatingSegmentLang ? 'Assigning...' : 'Assign to Segment'}
+          </button>
+        </div>
+      </div>
+
       {/* Main Customer Registry Data Table */}
       <div className="bg-white rounded-xl border border-[#E8EAF0] p-5 sm:p-6 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E8EAF0] pb-4">
@@ -350,6 +448,7 @@ export const AudienceRegistry: React.FC<AudienceRegistryProps> = ({
                 <th className="py-2.5 px-3">Customer Name</th>
                 <th className="py-2.5 px-3">Phone Number</th>
                 <th className="py-2.5 px-3">Segment</th>
+                <th className="py-2.5 px-3">Preferred Language</th>
                 <th className="py-2.5 px-3">Age</th>
                 <th className="py-2.5 px-3">Delivery Status</th>
                 <th className="py-2.5 px-3 text-right">Last Contacted</th>
@@ -358,7 +457,7 @@ export const AudienceRegistry: React.FC<AudienceRegistryProps> = ({
             <tbody className="divide-y divide-[#E8EAF0]">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-[#737D90] text-xs">
+                  <td colSpan={7} className="py-8 text-center text-[#737D90] text-xs">
                     No customers found matching the search criteria.
                   </td>
                 </tr>
@@ -375,6 +474,19 @@ export const AudienceRegistry: React.FC<AudienceRegistryProps> = ({
                         }`}>
                           {c.gender || 'Men'}
                         </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <select
+                          value={c.language || 'tamil'}
+                          onChange={e => handleCustomerLanguageChange(c.id, e.target.value)}
+                          className="bg-[#F7F8FC] hover:bg-white border border-[#E8EAF0] text-xs font-semibold text-[#20283A] rounded-lg px-2 py-1 cursor-pointer focus:border-[#5269D9] focus:outline-none transition-all"
+                        >
+                          {REGIONAL_LANGUAGES.map(l => (
+                            <option key={l.code} value={l.code}>
+                              {l.label} ({l.native})
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="py-3 px-3 text-[#737D90]">{c.age || '—'}</td>
                       <td className="py-3 px-3">

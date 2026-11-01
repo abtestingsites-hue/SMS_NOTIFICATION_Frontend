@@ -104,13 +104,15 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
     });
   }, []);
 
-  // Multilingual audience distribution breakdown
+  // Multilingual audience distribution breakdown (6 Required Regional Languages)
   const languageBreakdown = useMemo(() => {
     const counts: Record<string, number> = {
       'Tamil': 0,
-      'English': 0,
-      'Hindi': 0,
       'Telugu': 0,
+      'Kannada': 0,
+      'Malayalam': 0,
+      'Hindi': 0,
+      'Marathi': 0,
       'Other': 0
     };
     const filtered = targetAudience === 'All' 
@@ -119,42 +121,70 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
     
     if (filtered.length === 0) {
       return [
-        { language: 'Tamil', count: 120, pct: 42, flag: '🇮🇳' },
-        { language: 'English', count: 95, pct: 33, flag: '🌐' },
-        { language: 'Hindi', count: 70, pct: 25, flag: '🇮🇳' }
+        { language: 'Tamil (தமிழ்)', count: 120, pct: 42, flag: '🇮🇳' },
+        { language: 'Telugu (తెలుగు)', count: 95, pct: 33, flag: '🇮🇳' },
+        { language: 'Kannada (ಕನ್ನಡ)', count: 70, pct: 25, flag: '🇮🇳' }
       ];
     }
 
     filtered.forEach(c => {
-      const l = (c.language || 'English').toLowerCase();
-      if (l.includes('tamil') || l.includes('ta')) counts['Tamil']++;
-      else if (l.includes('hindi') || l.includes('hi')) counts['Hindi']++;
-      else if (l.includes('telugu') || l.includes('te')) counts['Telugu']++;
-      else if (l.includes('english') || l.includes('en')) counts['English']++;
+      const l = (c.language || 'tamil').toLowerCase().trim();
+      if (l === 'tamil' || l === 'ta') counts['Tamil']++;
+      else if (l === 'telugu' || l === 'te') counts['Telugu']++;
+      else if (l === 'kannada' || l === 'kn') counts['Kannada']++;
+      else if (l === 'malayalam' || l === 'ml') counts['Malayalam']++;
+      else if (l === 'hindi' || l === 'hi') counts['Hindi']++;
+      else if (l === 'marathi' || l === 'mr') counts['Marathi']++;
       else counts['Other']++;
     });
 
     const total = filtered.length;
     const result = [];
-    if (counts['Tamil'] > 0) result.push({ language: 'Tamil', count: counts['Tamil'], pct: Math.round((counts['Tamil'] / total) * 100), flag: '🇮🇳' });
-    if (counts['English'] > 0) result.push({ language: 'English', count: counts['English'], pct: Math.round((counts['English'] / total) * 100), flag: '🌐' });
-    if (counts['Hindi'] > 0) result.push({ language: 'Hindi', count: counts['Hindi'], pct: Math.round((counts['Hindi'] / total) * 100), flag: '🇮🇳' });
-    if (counts['Telugu'] > 0) result.push({ language: 'Telugu', count: counts['Telugu'], pct: Math.round((counts['Telugu'] / total) * 100), flag: '🇮🇳' });
-    if (counts['Other'] > 0) result.push({ language: 'Other (Fallback: EN)', count: counts['Other'], pct: Math.round((counts['Other'] / total) * 100), flag: '🌐' });
+    if (counts['Tamil'] > 0) result.push({ language: 'Tamil (தமிழ்)', count: counts['Tamil'], pct: Math.round((counts['Tamil'] / total) * 100), flag: '🇮🇳' });
+    if (counts['Telugu'] > 0) result.push({ language: 'Telugu (తెలుగు)', count: counts['Telugu'], pct: Math.round((counts['Telugu'] / total) * 100), flag: '🇮🇳' });
+    if (counts['Kannada'] > 0) result.push({ language: 'Kannada (ಕನ್ನಡ)', count: counts['Kannada'], pct: Math.round((counts['Kannada'] / total) * 100), flag: '🇮🇳' });
+    if (counts['Malayalam'] > 0) result.push({ language: 'Malayalam (മലയാളം)', count: counts['Malayalam'], pct: Math.round((counts['Malayalam'] / total) * 100), flag: '🇮🇳' });
+    if (counts['Hindi'] > 0) result.push({ language: 'Hindi (हिन्दी)', count: counts['Hindi'], pct: Math.round((counts['Hindi'] / total) * 100), flag: '🇮🇳' });
+    if (counts['Marathi'] > 0) result.push({ language: 'Marathi (मराठी)', count: counts['Marathi'], pct: Math.round((counts['Marathi'] / total) * 100), flag: '🇮🇳' });
+    if (counts['Other'] > 0) result.push({ language: 'Unassigned (Review Required)', count: counts['Other'], pct: Math.round((counts['Other'] / total) * 100), flag: '⚠️' });
 
     return result.length > 0 ? result : [
-      { language: 'Tamil', count: 120, pct: 42, flag: '🇮🇳' },
-      { language: 'English', count: 95, pct: 33, flag: '🌐' },
-      { language: 'Hindi', count: 70, pct: 25, flag: '🇮🇳' }
+      { language: 'Tamil (தமிழ்)', count: 120, pct: 42, flag: '🇮🇳' },
+      { language: 'Telugu (తెలుగు)', count: 95, pct: 33, flag: '🇮🇳' },
+      { language: 'Kannada (ಕನ್ನಡ)', count: 70, pct: 25, flag: '🇮🇳' }
     ];
   }, [customers, targetAudience]);
 
-  // Content approval check for selected AI template
+  // Strict Regional Language Approval Check:
+  // Every language needed by the template MUST be explicitly approved.
+  // "Do not automatically substitute another language when a translation is missing or unapproved."
+  const unapprovedLanguages = useMemo(() => {
+    if (!selectedAiTemplate) return [];
+    if (selectedAiTemplate.approvalStatus === 'APPROVED') return [];
+    const langs = selectedAiTemplate.languages || ['tamil'];
+    const unapproved: string[] = [];
+
+    for (const rawLang of langs) {
+      const l = rawLang.toLowerCase();
+      const variantsForLang = selectedAiTemplate.variants?.filter(
+        v => v.language.toLowerCase() === l
+      ) || [];
+      if (variantsForLang.length === 0) {
+        unapproved.push(`${rawLang} (Missing)`);
+      } else {
+        const approved = variantsForLang.some(v => v.approvalStatus === 'APPROVED' || v.approved);
+        if (!approved) {
+          unapproved.push(rawLang);
+        }
+      }
+    }
+    return unapproved;
+  }, [selectedAiTemplate]);
+
   const isTemplateApproved = useMemo(() => {
     if (!selectedAiTemplate) return true;
-    if (selectedAiTemplate.approvalStatus === 'APPROVED') return true;
-    return selectedAiTemplate.variants && selectedAiTemplate.variants.some(v => v.approved);
-  }, [selectedAiTemplate]);
+    return unapprovedLanguages.length === 0;
+  }, [selectedAiTemplate, unapprovedLanguages]);
 
   const uniqueOffers = useMemo(() => {
     const seen = new Set<string>();
@@ -275,7 +305,7 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
   const handleConfirmLaunch = async () => {
     if (selectedAiTemplate && !isTemplateApproved) {
       toast.error('Content Approval Required', {
-        description: 'Selected AI template has unverified variants. Approve all variants before broadcasting.'
+        description: `Language version(s) for [${unapprovedLanguages.join(', ')}] have not been approved. Automatic substitution is strictly prohibited.`
       });
       setIsConfirmOpen(false);
       return;
@@ -468,27 +498,36 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
                       <span className="truncate">Content Approved: Ready for multilingual broadcast ({selectedAiTemplate.variants?.length || 0} regional variants).</span>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between p-2 bg-[#FEF6EE] border border-[#F9DBAF] rounded-lg text-xs text-[#BC6D19] font-medium gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <ShieldAlert className="w-4 h-4 shrink-0 text-[#E5A23B]" />
-                        <span className="truncate">Pending Approval: Content review required before broadcast.</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 bg-[#FEF6EE] border border-[#F9DBAF] rounded-lg text-xs text-[#BC6D19] font-medium gap-2">
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-1.5 font-bold text-[#A75416]">
+                          <ShieldAlert className="w-4 h-4 shrink-0 text-[#E5A23B]" />
+                          <span>Content Approval Required: [{unapprovedLanguages.join(', ')}]</span>
+                        </div>
+                        <p className="text-[10px] text-[#A75416]/80">
+                          Automatic language substitution is strictly prohibited. Each language version must be approved before broadcast.
+                        </p>
                       </div>
                       <button
                         type="button"
                         onClick={async () => {
                           try {
-                            await api.approveAITemplateVariant(selectedAiTemplate.id);
-                            setSelectedAiTemplate({ ...selectedAiTemplate, approvalStatus: 'APPROVED' });
+                            await api.approveAITemplateVariant(selectedAiTemplate.id, undefined, true);
+                            setSelectedAiTemplate({
+                              ...selectedAiTemplate,
+                              approvalStatus: 'APPROVED',
+                              variants: selectedAiTemplate.variants?.map(v => ({ ...v, approvalStatus: 'APPROVED', approved: true }))
+                            });
                             toast.success('Template Approved for Broadcast', {
-                              description: 'All language variants are verified for delivery.'
+                              description: 'All regional language variants approved. Auto-substitution bypassed safely.'
                             });
                           } catch (err: any) {
                             toast.error('Approval Failed', { description: err.message });
                           }
                         }}
-                        className="px-2 py-1 bg-[#E5A23B] hover:bg-[#BC6D19] text-white text-[10px] font-bold rounded cursor-pointer shrink-0"
+                        className="px-2.5 py-1 bg-[#E5A23B] hover:bg-[#BC6D19] text-white text-[11px] font-bold rounded cursor-pointer shrink-0 transition-colors shadow-2xs"
                       >
-                        Approve Now
+                        Approve All Languages
                       </button>
                     </div>
                   )}
@@ -679,7 +718,7 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
                 ))}
               </div>
               <p className="text-[10px] text-[#737D90]">
-                * Automatically sends each recipient their preferred regional script. Fallback default: English.
+                * Strict Policy: No automatic language substitution. Each recipient receives their verified native script, or dispatch is held for review.
               </p>
             </div>
 

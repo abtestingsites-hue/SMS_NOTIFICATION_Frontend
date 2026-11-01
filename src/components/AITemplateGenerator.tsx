@@ -1,10 +1,9 @@
-import React, { useState, useId } from 'react';
+import React, { useState, useId, useMemo } from 'react';
 import type {
   MediaAsset,
   AIContentGeneration,
   CampaignFollowUpContent,
   ExtractedOfferData,
-  RegionalLanguage,
   TemplateTone
 } from '../types';
 import { api, API_BASE } from '../services/api';
@@ -19,22 +18,29 @@ import {
   Trash2,
   RefreshCw,
   Check,
-  Globe
+  Globe,
+  Search,
+  Star,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 
-const REGIONAL_LANGUAGES: Array<{ code: RegionalLanguage; label: string; native: string }> = [
-  { code: 'english', label: 'English', native: 'English' },
-  { code: 'tamil', label: 'Tamil', native: 'தமிழ்' },
-  { code: 'hindi', label: 'Hindi', native: 'हिंदी' },
-  { code: 'telugu', label: 'Telugu', native: 'తెలుగు' },
-  { code: 'malayalam', label: 'Malayalam', native: 'മലയാളം' },
-  { code: 'kannada', label: 'Kannada', native: 'ಕನ್ನಡ' },
-  { code: 'bengali', label: 'Bengali', native: 'বাংলা' },
-  { code: 'marathi', label: 'Marathi', native: 'मराठी' },
-  { code: 'gujarati', label: 'Gujarati', native: 'ગુજરાતી' },
-  { code: 'punjabi', label: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
-  { code: 'odia', label: 'Odia', native: 'ଓଡ଼ିଆ' },
-  { code: 'urdu', label: 'Urdu', native: 'اردو' }
+interface RequiredRegionalLanguage {
+  code: 'tamil' | 'telugu' | 'kannada' | 'malayalam' | 'hindi' | 'marathi';
+  langCode: 'ta' | 'te' | 'kn' | 'ml' | 'hi' | 'mr';
+  label: string;
+  native: string;
+  script: string;
+}
+
+// Exactly 6 Regional Languages for Initial Release
+const REQUIRED_SIX_LANGUAGES: RequiredRegionalLanguage[] = [
+  { code: 'tamil', langCode: 'ta', label: 'Tamil', native: 'தமிழ்', script: 'Tamil' },
+  { code: 'telugu', langCode: 'te', label: 'Telugu', native: 'తెలుగు', script: 'Telugu' },
+  { code: 'kannada', langCode: 'kn', label: 'Kannada', native: 'ಕನ್ನಡ', script: 'Kannada' },
+  { code: 'malayalam', langCode: 'ml', label: 'Malayalam', native: 'മലയാളം', script: 'Malayalam' },
+  { code: 'hindi', langCode: 'hi', label: 'Hindi', native: 'हिन्दी', script: 'Devanagari' },
+  { code: 'marathi', langCode: 'mr', label: 'Marathi', native: 'मराठी', script: 'Devanagari' }
 ];
 
 const TONES: Array<{ code: TemplateTone; label: string; desc: string }> = [
@@ -78,17 +84,28 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
     needsConfirmation: ['terms', 'validUntil']
   });
 
-  // Settings
-  const [selectedLanguages, setSelectedLanguages] = useState<RegionalLanguage[]>(['english', 'tamil', 'hindi']);
-  const [selectedTone, setSelectedTone] = useState<TemplateTone>('festive');
+  // Settings (Initial Release: Exactly 6 Regional Languages)
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['tamil', 'telugu', 'kannada']);
+  const [defaultCampaignLanguage, setDefaultCampaignLanguage] = useState<string>('tamil');
+  const [languageSearch, setLanguageSearch] = useState<string>('');
+  const [selectedTone, setSelectedTone] = useState<TemplateTone>('promotional');
   const [channel, setChannel] = useState<'both' | 'whatsapp' | 'sms'>('both');
 
   // Generated Content State
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentGeneration, setCurrentGeneration] = useState<AIContentGeneration | null>(null);
-  const [activeLanguage, setActiveLanguage] = useState<string>('english');
+  const [activeLanguage, setActiveLanguage] = useState<string>('tamil');
   const [activeVariantType, setActiveVariantType] = useState<string>('primary');
   const [centerSubTab, setCenterSubTab] = useState<'variations' | 'followups'>('variations');
+
+  // Searchable language filter
+  const filteredLanguages = useMemo(() => {
+    if (!languageSearch.trim()) return REQUIRED_SIX_LANGUAGES;
+    const q = languageSearch.toLowerCase().trim();
+    return REQUIRED_SIX_LANGUAGES.filter(
+      l => l.label.toLowerCase().includes(q) || l.native.includes(q) || l.langCode.toLowerCase().includes(q) || l.code.toLowerCase().includes(q)
+    );
+  }, [languageSearch]);
 
   // Follow-Up Sequence State
   const [followUps, setFollowUps] = useState<CampaignFollowUpContent[]>([]);
@@ -151,16 +168,32 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
     }
   };
 
-  const toggleLanguage = (lang: RegionalLanguage) => {
-    if (selectedLanguages.includes(lang)) {
+  const toggleLanguage = (langCode: string) => {
+    if (selectedLanguages.includes(langCode)) {
       if (selectedLanguages.length === 1) {
         toast.warning('At least one language must be selected.');
         return;
       }
-      setSelectedLanguages(prev => prev.filter(l => l !== lang));
+      setSelectedLanguages(prev => prev.filter(l => l !== langCode));
+      if (defaultCampaignLanguage === langCode) {
+        const remaining = selectedLanguages.filter(l => l !== langCode);
+        if (remaining.length > 0) setDefaultCampaignLanguage(remaining[0]);
+      }
     } else {
-      setSelectedLanguages(prev => [...prev, lang]);
+      setSelectedLanguages(prev => [...prev, langCode]);
     }
+  };
+
+  const handleSetDefaultLanguage = (langCode: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!selectedLanguages.includes(langCode)) {
+      setSelectedLanguages(prev => [...prev, langCode]);
+    }
+    setDefaultCampaignLanguage(langCode);
+    const langObj = REQUIRED_SIX_LANGUAGES.find(l => l.code === langCode);
+    toast.success('Default Language Selected', {
+      description: `${langObj?.label || langCode} (${langObj?.native}) set as campaign default.`
+    });
   };
 
   // Generate Multilingual Templates & Follow-Ups
@@ -177,14 +210,14 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
       });
 
       setCurrentGeneration(gen);
-      setActiveLanguage(selectedLanguages[0] || 'english');
+      setActiveLanguage(selectedLanguages[0] || 'tamil');
       setActiveVariantType('primary');
 
       toast.success('Multilingual Content Generated', {
-        description: `Generated ${gen.variants.length} variations across ${selectedLanguages.length} language(s).`
+        description: `Generated ${gen.variants.length} variations across ${selectedLanguages.length} regional language(s).`
       });
 
-      // Automatically generate sequence follow-ups
+      // Automatically generate 4-stage sequence follow-ups
       generateFollowUpSequence(gen.id);
     } catch (err: any) {
       toast.error('Generation Failed', { description: err.message });
@@ -205,9 +238,10 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
         tone: selectedTone,
         extractedOfferData: extractedData,
         schedule: [
-          { sequenceNumber: 1, interval: 'Day 3 — 11:00 AM', stage: 'REMINDER' },
-          { sequenceNumber: 2, interval: 'Day 5 — 5:00 PM', stage: 'REINFORCEMENT' },
-          { sequenceNumber: 3, interval: 'Day 7 — 12:00 PM', stage: 'EXPIRY' }
+          { sequenceNumber: 1, interval: '0h (Immediate)', stage: 'INITIAL' },
+          { sequenceNumber: 2, interval: 'Day 3 — 11:00 AM', stage: 'REMINDER' },
+          { sequenceNumber: 3, interval: 'Day 5 — 5:00 PM', stage: 'REINFORCEMENT' },
+          { sequenceNumber: 4, interval: 'Day 7 — 12:00 PM', stage: 'EXPIRY' }
         ]
       });
       if (res.followUps) {
@@ -261,6 +295,35 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
           description: `Approved ${activeVariant.language.toUpperCase()} (${activeVariant.variantType}) for broadcast.`
         });
       }
+    } catch (err: any) {
+      toast.error('Approval Failed', { description: err.message });
+    }
+  };
+
+  const handleApproveLanguage = async (languageToApprove: string) => {
+    if (!currentGeneration) return;
+    try {
+      const variantsForLang = currentGeneration.variants.filter(
+        v => v.language.toLowerCase() === languageToApprove.toLowerCase()
+      );
+      for (const v of variantsForLang) {
+        await api.approveAITemplateVariant(currentGeneration.id, v.id);
+      }
+      setCurrentGeneration(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          variants: prev.variants.map(v =>
+            v.language.toLowerCase() === languageToApprove.toLowerCase()
+              ? { ...v, approvalStatus: 'APPROVED', approved: true }
+              : v
+          )
+        };
+      });
+      const langObj = REQUIRED_SIX_LANGUAGES.find(l => l.code === languageToApprove);
+      toast.success('Language Version Approved', {
+        description: `All variants for ${langObj?.label || languageToApprove} (${langObj?.native || ''}) approved for bulk broadcast.`
+      });
     } catch (err: any) {
       toast.error('Approval Failed', { description: err.message });
     }
@@ -485,36 +548,92 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
             </div>
           </div>
 
-          {/* Step 3: Regional Language Selector */}
-          <div className="space-y-1.5 pt-2 border-t border-[#E8EAF0]">
+          {/* Step 3: Regional Language Selector (Searchable Selection Cards) */}
+          <div className="space-y-2 pt-2 border-t border-[#E8EAF0]">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-[#20283A] flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-[#5269D9]" /> Step 3: Target Regional Languages
+                <Globe className="w-3.5 h-3.5 text-[#5269D9]" /> Step 3: Regional Languages (6 Required)
               </label>
-              <span className="text-[10px] font-semibold text-[#5269D9]">
-                {selectedLanguages.length} Selected
+              <span className="text-[10px] font-semibold text-[#5269D9] bg-[#EEF1FC] px-1.5 py-0.5 rounded">
+                {selectedLanguages.length} Active
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-1.5 max-h-32 overflow-y-auto pr-1">
-              {REGIONAL_LANGUAGES.map(lang => {
+            {/* Searchable Language Filter */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-[#737D90] absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={languageSearch}
+                onChange={e => setLanguageSearch(e.target.value)}
+                placeholder="Search languages (e.g. தமிழ், te, Hindi)..."
+                className="w-full pl-8 pr-2.5 py-1 text-xs bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg text-[#20283A] placeholder-[#737D90] focus:bg-white focus:outline-none focus:border-[#5269D9] transition-all"
+              />
+            </div>
+
+            {/* Searchable Selection Cards Grid */}
+            <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+              {filteredLanguages.map(lang => {
                 const isSelected = selectedLanguages.includes(lang.code);
+                const isDefault = defaultCampaignLanguage === lang.code;
                 return (
-                  <button
+                  <div
                     key={lang.code}
-                    type="button"
                     onClick={() => toggleLanguage(lang.code)}
-                    className={`p-1.5 rounded-lg border text-left transition-all cursor-pointer ${
+                    className={`p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
                       isSelected
-                        ? 'bg-[#EEF1FC] border-[#5269D9] text-[#5269D9] font-bold shadow-2xs'
-                        : 'bg-[#F7F8FC] border-[#E8EAF0] text-[#737D90] hover:text-[#20283A]'
+                        ? 'bg-[#EEF1FC] border-[#5269D9] shadow-2xs'
+                        : 'bg-[#F7F8FC] border-[#E8EAF0] hover:border-[#D9E0F8] opacity-80'
                     }`}
                   >
-                    <div className="text-[11px] font-semibold leading-tight">{lang.label}</div>
-                    <div className="text-[9px] opacity-80 leading-tight">{lang.native}</div>
-                  </button>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-[#20283A]">{lang.label}</span>
+                          <span className="text-[9px] font-mono font-bold uppercase px-1 py-0.2 rounded bg-white border border-[#E8EAF0] text-[#5269D9]">
+                            {lang.langCode}
+                          </span>
+                        </div>
+                        <div className="text-xs font-semibold text-[#5269D9] mt-0.5">{lang.native}</div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="mt-0.5 accent-[#5269D9] cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="mt-2 pt-1 border-t border-[#E8EAF0]/60 flex items-center justify-between">
+                      <span className="text-[9px] text-[#737D90]">{lang.script} Script</span>
+                      {isSelected && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleSetDefaultLanguage(lang.code, e)}
+                          className={`text-[9px] px-1.5 py-0.5 rounded font-semibold cursor-pointer transition-colors ${
+                            isDefault
+                              ? 'bg-[#5269D9] text-white shadow-2xs font-bold'
+                              : 'bg-white hover:bg-[#EEF1FC] text-[#5269D9] border border-[#D9E0F8]'
+                          }`}
+                          title="Set as Default Campaign Language"
+                        >
+                          {isDefault ? '★ Default' : 'Set Default'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
+            </div>
+
+            {/* Default Campaign Language Badge */}
+            <div className="flex items-center justify-between text-[11px] bg-[#F7F8FC] px-2.5 py-1.5 rounded-lg border border-[#E8EAF0]">
+              <span className="text-[#737D90]">Campaign Default Language:</span>
+              <span className="font-bold text-[#5269D9] flex items-center gap-1">
+                <Star className="w-3 h-3 fill-[#5269D9]" />
+                {REQUIRED_SIX_LANGUAGES.find(l => l.code === defaultCampaignLanguage)?.label || defaultCampaignLanguage}
+                {' '}({REQUIRED_SIX_LANGUAGES.find(l => l.code === defaultCampaignLanguage)?.native})
+              </span>
             </div>
           </div>
 
@@ -633,24 +752,67 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
               {/* Language Switcher Bar */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[#F1F4F9]">
                 {selectedLanguages.map(lang => {
-                  const langDef = REGIONAL_LANGUAGES.find(l => l.code === lang);
+                  const langDef = REQUIRED_SIX_LANGUAGES.find(l => l.code === lang);
                   const isCurrent = activeLanguage.toLowerCase() === lang.toLowerCase();
+                  const isLangApproved = currentGeneration?.variants
+                    ?.filter(v => v.language.toLowerCase() === lang.toLowerCase())
+                    .every(v => v.approvalStatus === 'APPROVED' || v.approved);
                   return (
                     <button
                       key={lang}
                       type="button"
                       onClick={() => setActiveLanguage(lang)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize shrink-0 transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
                         isCurrent
                           ? 'bg-[#5269D9] text-white shadow-2xs'
                           : 'bg-[#F7F8FC] text-[#737D90] hover:text-[#20283A] border border-[#E8EAF0]'
                       }`}
                     >
-                      {langDef?.label || lang} <span className="text-[10px] opacity-80">({langDef?.native})</span>
+                      <span>{langDef?.label || lang}</span>
+                      <span className="text-[10px] opacity-80">({langDef?.native})</span>
+                      {isLangApproved ? (
+                        <span className="text-[10px] text-[#16A36A] font-bold">✓</span>
+                      ) : (
+                        <span className="text-[10px] text-[#E5A23B] font-bold">●</span>
+                      )}
                     </button>
                   );
                 })}
               </div>
+
+              {/* Language Approval Strip & Strict Substitution Compliance Notice */}
+              {(() => {
+                const activeLangDef = REQUIRED_SIX_LANGUAGES.find(l => l.code === activeLanguage);
+                const isCurrentLangApproved = currentGeneration?.variants
+                  ?.filter(v => v.language.toLowerCase() === activeLanguage.toLowerCase())
+                  .every(v => v.approvalStatus === 'APPROVED' || v.approved);
+                return (
+                  <div className="bg-[#EEF1FC]/60 border border-[#D9E0F8] rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      {isCurrentLangApproved ? (
+                        <span className="inline-flex items-center gap-1 text-[#16A36A] font-bold text-[11px] bg-white border border-[#C8EEDC] px-2 py-0.5 rounded-full shadow-2xs">
+                          <ShieldCheck className="w-3.5 h-3.5" /> {activeLangDef?.label || activeLanguage} Approved for Broadcast
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[#E5A23B] font-bold text-[11px] bg-white border border-[#FBE3B5] px-2 py-0.5 rounded-full shadow-2xs">
+                          <ShieldAlert className="w-3.5 h-3.5" /> {activeLangDef?.label || activeLanguage} Review Required
+                        </span>
+                      )}
+                      <span className="text-[10px] text-[#737D90]">Strict Policy: No automatic language substitution.</span>
+                    </div>
+
+                    {!isCurrentLangApproved && currentGeneration && (
+                      <button
+                        type="button"
+                        onClick={() => handleApproveLanguage(activeLanguage)}
+                        className="px-2.5 py-1 bg-[#16A36A] hover:bg-[#138656] text-white text-[11px] font-bold rounded-lg cursor-pointer transition-colors shadow-2xs flex items-center gap-1"
+                      >
+                        <Check className="w-3 h-3" /> Approve {activeLangDef?.label || activeLanguage} Version
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Variant Type Switcher */}
               <div className="grid grid-cols-5 gap-1 text-center">
@@ -802,11 +964,13 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-[#5269D9] text-[11px] flex items-center gap-1.5">
                             <Clock className="w-3 h-3" />
-                            {item.stage === 'REMINDER'
-                              ? 'Follow-Up 1 (Reminder)'
+                            {item.stage === 'INITIAL'
+                              ? '1. Initial Promotional Broadcast'
+                              : item.stage === 'REMINDER'
+                              ? '2. Follow-Up 1 (Reminder)'
                               : item.stage === 'REINFORCEMENT'
-                              ? 'Follow-Up 2 (Reinforce Offer)'
-                              : 'Final Follow-Up (Offer Closing)'}
+                              ? '3. Follow-Up 2 (Reinforce Offer)'
+                              : '4. Final Follow-Up (Offer Closing)'}
                           </span>
                           <span className="text-[10px] bg-white border border-[#E8EAF0] px-1.5 py-0.5 rounded font-mono text-[#737D90]">
                             {item.scheduledInterval}

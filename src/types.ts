@@ -342,15 +342,32 @@ export interface InAppNotification {
 }
 
 // Phase 17: AI Multilingual Templates & Follow-up
-export type RegionalLanguage =
-  | 'english'
+export type SixRegionalLanguage =
   | 'tamil'
-  | 'hindi'
   | 'telugu'
-  | 'malayalam'
   | 'kannada'
-  | 'bengali'
+  | 'malayalam'
+  | 'hindi'
+  | 'marathi';
+
+export type SixLanguageCode = 'ta' | 'te' | 'kn' | 'ml' | 'hi' | 'mr';
+
+export interface RequiredLanguageInfo {
+  code: SixRegionalLanguage;
+  langCode: SixLanguageCode;
+  label: string;
+  native: string;
+}
+
+export type RegionalLanguage =
+  | 'tamil'
+  | 'telugu'
+  | 'kannada'
+  | 'malayalam'
+  | 'hindi'
   | 'marathi'
+  | 'english'
+  | 'bengali'
   | 'gujarati'
   | 'punjabi'
   | 'odia'
@@ -424,6 +441,7 @@ export interface AIContentGeneration {
   extractedOfferData: ExtractedOfferData;
   extractedData?: ExtractedOfferData;
   languages: string[];
+  defaultLanguage?: string;
   tone: TemplateTone;
   channel: 'both' | 'whatsapp' | 'sms';
   generationStatus: 'DRAFT' | 'ANALYZED' | 'GENERATED' | 'APPROVED';
