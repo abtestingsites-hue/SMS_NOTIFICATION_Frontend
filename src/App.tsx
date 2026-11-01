@@ -87,9 +87,9 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
     Promise.all([
-      fetch('/api/templates/stats').then(r => r.json()).catch(() => []),
+      api.getTemplateStats().catch(() => []),
       api.getOffers().catch(() => []),
-      fetch('/api/settings').then(r => r.json()).catch(() => ({})),
+      api.getSettings().catch(() => ({} as any)),
       api.getIntegrationStatus().catch(() => null),
       api.getCampaigns().catch(() => []),
       api.getCustomers().catch(() => []),
@@ -126,7 +126,7 @@ export default function App() {
   const refreshCoreData = async () => {
     try {
       const [statsData, offersData, campaignsData, customersData] = await Promise.all([
-        fetch('/api/templates/stats').then(r => r.json()).catch(() => []),
+        api.getTemplateStats().catch(() => []),
         api.getOffers().catch(() => []),
         api.getCampaigns().catch(() => []),
         api.getCustomers().catch(() => [])
@@ -146,14 +146,11 @@ export default function App() {
     if (activeCampaign && (activeCampaign.status === 'PROCESSING' || activeCampaign.status === 'SCHEDULED')) {
       interval = setInterval(async () => {
         try {
-          const res = await fetch(`/api/campaigns/${activeCampaign.id}`);
-          if (res.ok) {
-            const data = await res.json();
-            setActiveCampaign(data);
-            if (data.status === 'COMPLETED' || data.status === 'PAUSED_LIMIT_REACHED') {
-              clearInterval(interval);
-              showToast(`Campaign #${activeCampaign.id} completed with ${data.sent} deliveries!`);
-            }
+          const data = await api.getCampaign(activeCampaign.id);
+          setActiveCampaign(data);
+          if (data.status === ('COMPLETED' as any) || (data.status as any) === 'PAUSED_LIMIT_REACHED') {
+            clearInterval(interval);
+            showToast(`Campaign #${activeCampaign.id} completed with ${data.sent} deliveries!`);
           }
         } catch (e) {
           console.error('Status polling error:', e);
@@ -172,27 +169,17 @@ export default function App() {
     delayHours: number;
     offerCode?: string;
   }) => {
-    const res = await fetch('/api/campaigns/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: params.name || 'Marketing Campaign',
-        scheduleDelayHours: params.delayHours,
-        validUntil: params.validUntil,
-        targetAudience: params.targetAudience,
-        customerCareNumber,
-        sendToCustomerCare,
-        platform: params.platform,
-        template
-      })
+    const data = await api.startCampaign({
+      name: params.name || 'Marketing Campaign',
+      scheduleDelayHours: params.delayHours,
+      validUntil: params.validUntil,
+      targetAudience: params.targetAudience,
+      customerCareNumber,
+      sendToCustomerCare,
+      platform: params.platform,
+      template
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to start campaign');
-    }
-
-    const data = await res.json();
     const newCamp: Campaign = {
       id: data.campaignId,
       name: params.name || 'Marketing Campaign',
@@ -200,7 +187,7 @@ export default function App() {
       total: 100,
       sent: 0,
       createdAt: new Date().toISOString(),
-      platform: data.platform || params.platform,
+      platform: (data.platform as 'both' | 'whatsapp' | 'sms') || params.platform,
       targetAudience: params.targetAudience,
       validUntil: params.validUntil,
       customerCareNumber,
@@ -214,21 +201,12 @@ export default function App() {
 
   // Pre-flight Single Carrier Test
   const handleSendSingleMessage = async (recipient: string, testPlatform: 'both' | 'whatsapp' | 'sms') => {
-    const res = await fetch('/api/sms/send-single', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        recipient,
-        platform: testPlatform,
-        template,
-        recipientName: 'Valued Client'
-      })
+    const data = await api.sendSingleMessage({
+      recipient,
+      platform: testPlatform,
+      template,
+      recipientName: 'Valued Client'
     });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Failed to send test message');
-    }
     showToast(data.message || 'Single test message dispatch complete.');
     return data;
   };
@@ -236,14 +214,10 @@ export default function App() {
   // Save Gateway & Customer Care Settings
   const handleSaveCareSettings = async (number?: string, sendCare?: boolean, chosenPlatform?: 'both' | 'whatsapp' | 'sms') => {
     try {
-      await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerCareNumber: number !== undefined ? number : customerCareNumber,
-          sendToCustomerCare: sendCare !== undefined ? sendCare : sendToCustomerCare,
-          platform: chosenPlatform !== undefined ? chosenPlatform : platform
-        })
+      await api.saveSettings({
+        customerCareNumber: number !== undefined ? number : customerCareNumber,
+        sendToCustomerCare: sendCare !== undefined ? sendCare : sendToCustomerCare,
+        platform: chosenPlatform !== undefined ? chosenPlatform : platform
       });
       showToast('Gateway settings saved.');
     } catch (e) {
@@ -254,11 +228,7 @@ export default function App() {
 
   // Upload Audience CSV
   const handleUploadAudience = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch('/api/upload/customers', { method: 'POST', body: formData });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Upload failed');
+    const data = await api.uploadCustomers(file);
     setAudienceCount(prev => prev + data.count);
     showToast(`Ingested ${data.count} audience records.`);
     return data;
@@ -266,11 +236,7 @@ export default function App() {
 
   // Upload Offers CSV
   const handleUploadOffers = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch('/api/upload/offers', { method: 'POST', body: formData });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Upload failed');
+    const data = await api.uploadOffers(file);
     showToast(`Imported ${data.count} promotional offers.`);
     refreshCoreData();
   };
@@ -290,23 +256,14 @@ export default function App() {
 
   // Upload Templates File
   const handleUploadTemplates = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch('/api/upload/templates', { method: 'POST', body: formData });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Upload failed');
+    await api.uploadTemplates(file);
     showToast('Templates refreshed from file.');
     refreshCoreData();
   };
 
   // Save Template Text
   const handleSaveTemplate = async (text: string) => {
-    const res = await fetch('/api/template', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ template: text })
-    });
-    if (!res.ok) throw new Error('Save failed');
+    await api.saveTemplate(text);
     setTemplate(text);
     showToast('Template body saved.');
   };

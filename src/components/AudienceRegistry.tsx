@@ -38,7 +38,7 @@ export const AudienceRegistry: React.FC<AudienceRegistryProps> = ({
     try {
       const [custList, suppList] = await Promise.all([
         api.getCustomers().catch(() => []),
-        fetch('/api/governance/suppression').then(r => r.json()).catch(() => [])
+        api.getSuppressionList().catch(() => [])
       ]);
 
       if (Array.isArray(custList) && custList.length > 0) {
