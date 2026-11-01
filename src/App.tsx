@@ -27,7 +27,25 @@ interface TemplateStat {
 
 export default function App() {
   // Navigation & Layout State
-  const [activeNav, setActiveNav] = useState<NavModule>('overview');
+  const getInitialNav = (): NavModule => {
+    const hash = window.location.hash.replace('#', '') as NavModule;
+    const urlParams = new URLSearchParams(window.location.search);
+    const navParam = urlParams.get('nav') as NavModule;
+    const validNavs: NavModule[] = [
+      'overview', 'console', 'builder', 'audience', 'templates', 'media',
+      'offers', 'scheduler', 'automations', 'meta', 'google', 'integrations', 'settings'
+    ];
+    if (validNavs.includes(navParam)) return navParam;
+    if (validNavs.includes(hash)) return hash;
+    return 'overview';
+  };
+
+  const [activeNav, setActiveNav] = useState<NavModule>(getInitialNav);
+
+  useEffect(() => {
+    window.location.hash = activeNav;
+  }, [activeNav]);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');

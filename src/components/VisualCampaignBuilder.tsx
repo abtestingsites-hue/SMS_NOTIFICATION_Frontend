@@ -103,6 +103,7 @@ export const VisualCampaignBuilder: React.FC<VisualCampaignBuilderProps> = ({
   const [isDraftsModalOpen, setIsDraftsModalOpen] = useState(false);
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<'assets' | 'canvas' | 'config'>('canvas');
 
   // Available System Assets
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
@@ -725,13 +726,13 @@ export const VisualCampaignBuilder: React.FC<VisualCampaignBuilderProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5.5rem)] bg-[#F8FAFC] -m-4 sm:-m-6 lg:-m-8 overflow-hidden select-none">
+    <div className="flex-1 w-full h-full min-h-0 flex flex-col bg-[#F8FAFC] overflow-hidden select-none">
       {/* =========================================================================
           TOP WORKSPACE TOOLBAR
       ========================================================================= */}
       <div className="bg-white border-b border-[#E8EAF0] px-4 py-2.5 flex items-center justify-between gap-3 shrink-0 shadow-2xs z-20">
         {/* Left: Module identity & editable title */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 sm:flex-initial">
           <div className="w-8 h-8 rounded-lg bg-[#EEF2FF] text-[#5269D9] flex items-center justify-center font-bold shrink-0">
             <Wand2 className="w-4 h-4" />
           </div>
@@ -742,20 +743,20 @@ export const VisualCampaignBuilder: React.FC<VisualCampaignBuilderProps> = ({
                 value={campaignName}
                 onChange={e => setCampaignName(e.target.value)}
                 placeholder="Campaign Title..."
-                className="text-sm font-bold text-[#20283A] bg-transparent hover:bg-slate-50 focus:bg-white border-b border-transparent focus:border-[#5269D9] outline-none px-1 py-0.5 rounded transition-all max-w-[280px] sm:max-w-[380px] truncate"
+                className="text-xs sm:text-sm font-bold text-[#20283A] bg-transparent hover:bg-slate-50 focus:bg-white border-b border-transparent focus:border-[#5269D9] outline-none px-1 py-0.5 rounded transition-all max-w-[150px] sm:max-w-[280px] lg:max-w-[380px] truncate"
               />
-              <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 Phase 18
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-[#737D90]">
-              <span>Channel:</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] text-[#737D90]">
+              <span className="hidden xs:inline">Channel:</span>
               <div className="inline-flex rounded-md bg-slate-100 p-0.5">
                 {(['both', 'whatsapp', 'sms'] as const).map(ch => (
                   <button
                     key={ch}
                     onClick={() => setChannel(ch)}
-                    className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all ${
+                    className={`px-1.5 sm:px-2 py-0.5 rounded text-[9.5px] sm:text-[10px] font-semibold transition-all ${
                       channel === ch ? 'bg-white text-[#20283A] shadow-2xs' : 'text-[#737D90] hover:text-[#20283A]'
                     }`}
                   >
@@ -767,8 +768,8 @@ export const VisualCampaignBuilder: React.FC<VisualCampaignBuilderProps> = ({
           </div>
         </div>
 
-        {/* Center: Autosave status & Undo/Redo */}
-        <div className="hidden md:flex items-center gap-3">
+        {/* Center: Autosave status & Undo/Redo (Visible on desktop screens >= lg) */}
+        <div className="hidden lg:flex items-center gap-3 shrink-0">
           <div className="flex items-center gap-1.5 text-[11px] text-[#737D90]">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span>{lastAutosaved ? `Autosaved ${lastAutosaved}` : 'Autosave active'}</span>
@@ -804,13 +805,13 @@ export const VisualCampaignBuilder: React.FC<VisualCampaignBuilderProps> = ({
         </div>
 
         {/* Right Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={() => setIsDraftsModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E8EAF0] bg-white hover:bg-slate-50 text-[#20283A] text-xs font-semibold shadow-2xs transition-colors"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E8EAF0] bg-white hover:bg-slate-50 text-[#20283A] text-xs font-semibold shadow-2xs transition-colors"
           >
             <FolderOpen className="w-3.5 h-3.5 text-[#737D90]" />
-            <span className="hidden sm:inline">Drafts</span>
+            <span>Drafts</span>
             {draftsList.length > 0 && (
               <span className="px-1.5 py-0.2 bg-slate-100 text-[#737D90] rounded text-[10px] font-mono">
                 {draftsList.length}
@@ -821,18 +822,18 @@ export const VisualCampaignBuilder: React.FC<VisualCampaignBuilderProps> = ({
           <button
             onClick={handleExplicitSaveDraft}
             disabled={isSaving}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E8EAF0] bg-white hover:bg-slate-50 text-[#20283A] text-xs font-semibold shadow-2xs transition-colors"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E8EAF0] bg-white hover:bg-slate-50 text-[#20283A] text-xs font-semibold shadow-2xs transition-colors"
           >
             <Save className={`w-3.5 h-3.5 text-[#5269D9] ${isSaving ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Save</span>
+            <span>Save</span>
           </button>
 
           <button
             onClick={() => setActiveRightTab('preview')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#20283A] text-xs font-semibold transition-colors"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#20283A] text-xs font-semibold transition-colors"
           >
             <Eye className="w-3.5 h-3.5 text-[#5269D9]" />
-            <span className="hidden sm:inline">Preview</span>
+            <span>Preview</span>
           </button>
 
           <button
@@ -840,12 +841,44 @@ export const VisualCampaignBuilder: React.FC<VisualCampaignBuilderProps> = ({
               setActiveRightTab('launch');
               setIsLaunchModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#5269D9] hover:bg-[#4357c5] text-white text-xs font-bold shadow-xs hover:shadow transition-all"
+            className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg bg-[#5269D9] hover:bg-[#4357c5] text-white text-xs font-bold shadow-xs hover:shadow transition-all shrink-0"
           >
             <Send className="w-3.5 h-3.5" />
-            <span>Launch Campaign</span>
+            <span className="hidden sm:inline">Launch Campaign</span>
+            <span className="sm:hidden">Launch</span>
           </button>
         </div>
+      </div>
+
+      {/* Mobile / Tablet Responsive Mode Switcher (< lg) */}
+      <div className="lg:hidden flex items-center border-b border-[#E8EAF0] bg-white p-1 gap-1 shrink-0 shadow-2xs">
+        <button
+          onClick={() => setMobileView('assets')}
+          className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+            mobileView === 'assets' ? 'bg-[#5269D9] text-white shadow-xs' : 'text-[#737D90] hover:bg-slate-100'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>Assets</span>
+        </button>
+        <button
+          onClick={() => setMobileView('canvas')}
+          className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+            mobileView === 'canvas' ? 'bg-[#5269D9] text-white shadow-xs' : 'text-[#737D90] hover:bg-slate-100'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>Canvas</span>
+        </button>
+        <button
+          onClick={() => setMobileView('config')}
+          className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+            mobileView === 'config' ? 'bg-[#5269D9] text-white shadow-xs' : 'text-[#737D90] hover:bg-slate-100'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Config ({activeRightTab.toUpperCase()})</span>
+        </button>
       </div>
 
       {/* =========================================================================
@@ -856,7 +889,7 @@ export const VisualCampaignBuilder: React.FC<VisualCampaignBuilderProps> = ({
         {/* -----------------------------------------------------------------------
             LEFT PANEL: ASSET LIBRARY (Width ~280px)
         ----------------------------------------------------------------------- */}
-        <div className="w-72 lg:w-80 bg-white border-r border-[#E8EAF0] flex flex-col shrink-0 overflow-hidden">
+        <div className={`w-full lg:w-72 xl:w-80 bg-white border-r border-[#E8EAF0] flex-col shrink-0 overflow-hidden ${mobileView === 'assets' ? 'flex' : 'hidden lg:flex'}`}>
           {/* Asset Library Header & Categories */}
           <div className="p-3 border-b border-[#E8EAF0] space-y-2 bg-[#FAFBFD]">
             <div className="flex items-center justify-between">
@@ -1091,7 +1124,7 @@ export const VisualCampaignBuilder: React.FC<VisualCampaignBuilderProps> = ({
         <div
           onDragOver={e => e.preventDefault()}
           onDrop={handleDropOnCanvas}
-          className="flex-1 bg-[#F8FAFC] flex flex-col min-w-0 overflow-y-auto p-4 sm:p-6"
+          className={`flex-1 bg-[#F8FAFC] flex-col min-w-0 overflow-y-auto p-4 sm:p-6 ${mobileView === 'canvas' ? 'flex' : 'hidden lg:flex'}`}
         >
           <div className="max-w-3xl w-full mx-auto space-y-4">
 
@@ -1415,10 +1448,10 @@ export const VisualCampaignBuilder: React.FC<VisualCampaignBuilderProps> = ({
         {/* -----------------------------------------------------------------------
             RIGHT PANEL: CAMPAIGN CONFIGURATION (7 TABS) (Width ~380px)
         ----------------------------------------------------------------------- */}
-        <div className="w-80 lg:w-96 bg-white border-l border-[#E8EAF0] flex flex-col shrink-0 overflow-hidden">
+        <div className={`w-full lg:w-[350px] xl:w-[380px] bg-white border-l border-[#E8EAF0] flex-col shrink-0 overflow-hidden ${mobileView === 'config' ? 'flex' : 'hidden lg:flex'}`}>
           
           {/* Configuration Tab Navigation Bar */}
-          <div className="flex items-center border-b border-[#E8EAF0] bg-[#FAFBFD] px-1 py-1 overflow-x-auto scrollbar-none">
+          <div className="grid grid-cols-7 gap-0.5 p-1 bg-[#FAFBFD] border-b border-[#E8EAF0] shrink-0">
             {[
               { id: 'ai' as const, label: 'AI', icon: Sparkles },
               { id: 'audience' as const, label: 'Audience', icon: Users },
@@ -1431,14 +1464,15 @@ export const VisualCampaignBuilder: React.FC<VisualCampaignBuilderProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveRightTab(tab.id)}
-                className={`flex-1 min-w-[48px] py-2 px-1 text-center rounded-lg transition-all flex flex-col items-center gap-1 ${
+                className={`py-1.5 px-0.5 rounded-md transition-all flex flex-col items-center justify-center gap-0.5 min-w-0 text-center ${
                   activeRightTab === tab.id
-                    ? 'bg-white text-[#5269D9] shadow-2xs font-bold'
-                    : 'text-[#737D90] hover:text-[#20283A]'
+                    ? 'bg-white text-[#5269D9] shadow-2xs font-bold border border-[#E8EAF0]'
+                    : 'text-[#737D90] hover:text-[#20283A] hover:bg-slate-100'
                 }`}
+                title={tab.label}
               >
-                <tab.icon className="w-3.5 h-3.5" />
-                <span className="text-[10px]">{tab.label}</span>
+                <tab.icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-[9.5px] font-medium leading-none truncate max-w-full">{tab.label}</span>
               </button>
             ))}
           </div>
