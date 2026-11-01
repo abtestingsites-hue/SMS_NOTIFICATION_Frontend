@@ -480,11 +480,15 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
                 )}
                 {aiTemplates.length > 0 && (
                   <optgroup label="AI Multilingual Templates">
-                    {aiTemplates.map((a) => (
-                      <option key={a.id} value={`ai_${a.id}`}>
-                        ✨ {a.extractedData?.businessName || 'AI Offer'} - {a.extractedData?.offerTitle || 'Template'} ({a.variants?.length || 0} Langs) {a.approvalStatus === 'APPROVED' ? '[APPROVED]' : '[NEEDS APPROVAL]'}
-                      </option>
-                    ))}
+                    {aiTemplates.map((a) => {
+                      const brand = typeof a.extractedData?.brandName === 'object' ? a.extractedData.brandName?.value : a.extractedData?.businessName;
+                      const title = typeof a.extractedData?.offerTitle === 'object' ? a.extractedData.offerTitle?.value : a.extractedData?.offerTitle;
+                      return (
+                        <option key={a.id} value={`ai_${a.id}`}>
+                          ✨ {brand || 'AI Offer'} - {title || 'Template'} ({a.variants?.length || 0} Langs) {a.approvalStatus === 'APPROVED' ? '[APPROVED]' : '[NEEDS APPROVAL]'}
+                        </option>
+                      );
+                    })}
                   </optgroup>
                 )}
               </select>

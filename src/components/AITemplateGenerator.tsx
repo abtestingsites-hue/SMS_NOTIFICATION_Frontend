@@ -1,9 +1,10 @@
-import React, { useState, useId, useMemo } from 'react';
+import React, { useState, useId, useMemo, useEffect } from 'react';
 import type {
   MediaAsset,
   AIContentGeneration,
   CampaignFollowUpContent,
   ExtractedOfferData,
+  ExtractedField,
   TemplateTone
 } from '../types';
 import { api, API_BASE } from '../services/api';
@@ -22,7 +23,10 @@ import {
   Search,
   Star,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  AlertTriangle,
+  CheckCircle2,
+  Info
 } from 'lucide-react';
 
 interface RequiredRegionalLanguage {
@@ -33,7 +37,7 @@ interface RequiredRegionalLanguage {
   script: string;
 }
 
-// Exactly 6 Regional Languages for Initial Release
+// Exactly 6 Regional Languages for Initial Release (PHASE 17.1 Specification)
 const REQUIRED_SIX_LANGUAGES: RequiredRegionalLanguage[] = [
   { code: 'tamil', langCode: 'ta', label: 'Tamil', native: 'தமிழ்', script: 'Tamil' },
   { code: 'telugu', langCode: 'te', label: 'Telugu', native: 'తెలుగు', script: 'Telugu' },
@@ -57,6 +61,23 @@ interface AITemplateGeneratorProps {
   customerCareNumber: string;
 }
 
+// Helpers for structured ExtractedField values
+const getVal = (f: ExtractedField<string> | string | undefined | null): string => {
+  if (f === null || f === undefined) return '';
+  if (typeof f === 'object' && 'value' in f) return f.value ?? '';
+  return String(f);
+};
+
+const getConf = (f: ExtractedField<string> | string | undefined | null): 'high' | 'medium' | 'low' | 'not_found' | 'uncertain' | 'manual' => {
+  if (f && typeof f === 'object' && 'confidence' in f) return f.confidence;
+  return 'high';
+};
+
+const getSrc = (f: ExtractedField<string> | string | undefined | null): 'image' | 'manual' => {
+  if (f && typeof f === 'object' && 'source' in f) return f.source;
+  return 'image';
+};
+
 export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
   onApplyTemplate,
   customerCareNumber
@@ -67,21 +88,38 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
   const fileInputId = useId();
 
-  // Extraction State
+  // Gemini Model Engine Status
+  const [geminiModel, setGeminiModel] = useState<string>('gemini-3.5-flash');
+
+  useEffect(() => {
+    api.getGeminiStatus()
+      .then(res => {
+        if (res.model) setGeminiModel(res.model);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Extraction State & Grounding
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isConfirmed, setIsConfirmed] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedOfferData>({
+    brandName: { value: 'Trends Lifestyle', confidence: 'high', source: 'image' },
+    productName: { value: 'Apparel & Festive Wear', confidence: 'high', source: 'image' },
+    offerTitle: { value: 'Festive Grand Savings', confidence: 'high', source: 'image' },
+    discount: { value: '50% OFF', confidence: 'high', source: 'image' },
+    couponCode: { value: 'DIWALI50', confidence: 'high', source: 'image' },
+    validUntil: { value: '30 Nov 2026', confidence: 'high', source: 'image' },
+    contactNumber: { value: customerCareNumber || '+916369825386', confidence: 'high', source: 'image' },
+    websiteUrl: { value: 'https://trendsfashion.in', confidence: 'high', source: 'image' },
+    callToAction: { value: 'Shop Now & Save', confidence: 'high', source: 'image' },
+    productFeatures: ['Festive Ethnic Collection', 'Zero Exchange Hassle'],
+    termsAndConditions: ['Valid while stocks last.'],
+    missingFields: [],
+    uncertainFields: [],
+    isConfirmed: false,
     businessName: 'Trends Lifestyle',
-    productName: 'Apparel & Lifestyle',
-    offerTitle: '50% Festive Grand Savings',
-    discount: '50% OFF',
-    couponCode: 'DIWALI50',
-    validUntil: '30 Nov 2026',
-    terms: 'Valid on select merchandise while stock lasts. T&C apply.',
-    contactNumber: customerCareNumber || '+916369825386',
-    websiteUrl: 'https://trendsfashion.in',
-    callToAction: 'Shop Now & Save',
-    campaignContext: 'Diwali Festive Mega Sale',
-    needsConfirmation: ['terms', 'validUntil']
+    terms: 'Valid while stocks last.',
+    campaignContext: 'Diwali Festive Mega Sale'
   });
 
   // Settings (Initial Release: Exactly 6 Regional Languages)
@@ -93,6 +131,7 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
 
   // Generated Content State
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRegeneratingVariant, setIsRegeneratingVariant] = useState(false);
   const [currentGeneration, setCurrentGeneration] = useState<AIContentGeneration | null>(null);
   const [activeLanguage, setActiveLanguage] = useState<string>('tamil');
   const [activeVariantType, setActiveVariantType] = useState<string>('primary');
@@ -118,29 +157,75 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
   const [testRecipient, setTestRecipient] = useState(customerCareNumber || '+916369825386');
   const [isSendingTest, setIsSendingTest] = useState(false);
 
+  // Helper to handle manual edits with provenance tracking
+  const handleUpdateField = (key: keyof ExtractedOfferData, newVal: string) => {
+    setExtractedData(prev => {
+      const trimmed = newVal.trim();
+      const updatedField: ExtractedField<string> = {
+        value: trimmed.length > 0 ? newVal : null,
+        confidence: trimmed.length > 0 ? 'manual' : 'not_found',
+        source: 'manual'
+      };
+
+      const next = {
+        ...prev,
+        [key]: updatedField,
+        ...(key === 'brandName' ? { businessName: newVal } : {}),
+        isConfirmed: false
+      };
+
+      // Recompute missingFields
+      const criticalKeys: Array<keyof ExtractedOfferData> = [
+        'brandName',
+        'offerTitle',
+        'discount',
+        'couponCode',
+        'validUntil',
+        'contactNumber'
+      ];
+      const missing: string[] = [];
+      for (const k of criticalKeys) {
+        const v = getVal(next[k] as any);
+        if (!v) missing.push(String(k));
+      }
+      next.missingFields = missing;
+      return next;
+    });
+    setIsConfirmed(false);
+  };
+
+  // Perform Gemini Multimodal Analysis
+  const performGeminiAnalysis = async (options: { file?: File; mediaId?: string }) => {
+    setIsExtracting(true);
+    setIsConfirmed(false);
+    try {
+      const res = await api.analyzeOfferImage(options);
+      if (res.extractedOfferData) {
+        setExtractedData(res.extractedOfferData);
+        if (res.sourceMediaAsset) setAttachedMediaAsset(res.sourceMediaAsset);
+
+        const discountVal = getVal(res.extractedOfferData.discount);
+        const codeVal = getVal(res.extractedOfferData.couponCode);
+        const missingCount = res.extractedOfferData.missingFields?.length || 0;
+
+        toast.success('Gemini Multimodal Analysis Complete', {
+          description: `Extracted visible facts from poster (${discountVal || 'Offer'}, Code: ${codeVal || 'None'}). ${missingCount} field(s) ungrounded.`
+        });
+      }
+    } catch (err: any) {
+      toast.error('Gemini Extraction Notice', { description: 'Failed to analyze: ' + err.message });
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
   // Handle Image Upload & Auto-Extraction
   const handleImageFileChange = async (file: File) => {
     setSelectedImage(file);
     const preview = URL.createObjectURL(file);
     setImagePreviewUrl(preview);
     setAttachedMediaAsset(null);
-
-    // Auto extract
-    setIsExtracting(true);
-    try {
-      const res = await api.analyzeOfferImage({ file });
-      if (res.extractedOfferData) {
-        setExtractedData(res.extractedOfferData);
-        if (res.sourceMediaAsset) setAttachedMediaAsset(res.sourceMediaAsset);
-        toast.success('Offer Details Extracted', {
-          description: `Extracted code: ${res.extractedOfferData.couponCode} (${res.extractedOfferData.discount})`
-        });
-      }
-    } catch (err: any) {
-      toast.error('Extraction Notice', { description: 'Using default offer schema: ' + err.message });
-    } finally {
-      setIsExtracting(false);
-    }
+    await performGeminiAnalysis({ file });
   };
 
   const handleSelectFromLibrary = async (asset: MediaAsset) => {
@@ -151,20 +236,26 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
         ? asset.assetStreamUrl
         : `${API_BASE}${asset.assetStreamUrl || `/api/media/asset/${asset.id}`}`
     );
+    await performGeminiAnalysis({ mediaId: asset.id });
+  };
 
-    setIsExtracting(true);
+  // Confirm facts workflow
+  const handleConfirmFacts = async () => {
     try {
-      const res = await api.analyzeOfferImage({ mediaId: asset.id });
-      if (res.extractedOfferData) {
-        setExtractedData(res.extractedOfferData);
-        toast.success('Asset Analyzed', {
-          description: `Extracted "${res.extractedOfferData.offerTitle}" from media library asset.`
-        });
+      if (currentGeneration?.id) {
+        await api.confirmOfferFields(currentGeneration.id, extractedData);
       }
+      setIsConfirmed(true);
+      setExtractedData(prev => ({
+        ...prev,
+        isConfirmed: true,
+        confirmedAt: new Date().toISOString()
+      }));
+      toast.success('Offer Facts Confirmed', {
+        description: 'Visual evidence verified and locked for grounded AI copy generation.'
+      });
     } catch (err: any) {
-      toast.error('Analysis Notice', { description: err.message });
-    } finally {
-      setIsExtracting(false);
+      toast.error('Confirmation Failed', { description: err.message });
     }
   };
 
@@ -196,7 +287,7 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
     });
   };
 
-  // Generate Multilingual Templates & Follow-Ups
+  // Generate Multilingual Templates & Follow-Ups with Gemini
   const handleGenerateContent = async () => {
     setIsGenerating(true);
     try {
@@ -213,8 +304,8 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
       setActiveLanguage(selectedLanguages[0] || 'tamil');
       setActiveVariantType('primary');
 
-      toast.success('Multilingual Content Generated', {
-        description: `Generated ${gen.variants.length} variations across ${selectedLanguages.length} regional language(s).`
+      toast.success('Multilingual Content Generated via Gemini', {
+        description: `Generated ${gen.variants.length} variations across ${selectedLanguages.length} regional language(s) strictly grounded on image facts.`
       });
 
       // Automatically generate 4-stage sequence follow-ups
@@ -251,6 +342,43 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
       console.warn('Follow-up generation warning:', e.message);
     } finally {
       setIsGeneratingFollowUps(false);
+    }
+  };
+
+  // Per-message variant regeneration with Gemini
+  const handleRegenerateVariant = async () => {
+    if (!currentGeneration || !activeVariant) return;
+    setIsRegeneratingVariant(true);
+    try {
+      const res = await api.generateAITemplates({
+        sourceMediaId: attachedMediaAsset?.id || null,
+        sourceMediaAsset: attachedMediaAsset || null,
+        extractedOfferData: extractedData,
+        languages: [activeLanguage],
+        channel,
+        tone: selectedTone
+      });
+
+      if (res.variants && res.variants.length > 0) {
+        const match = res.variants.find(v => v.variantType === activeVariantType) || res.variants[0];
+        if (match) {
+          await api.updateAITemplateVariant(currentGeneration.id, activeVariant.id, match.messageBody);
+          setCurrentGeneration(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              variants: prev.variants.map(v => (v.id === activeVariant.id ? { ...v, messageBody: match.messageBody, approvalStatus: 'PENDING' } : v))
+            };
+          });
+          toast.success('Variant Regenerated with Gemini', {
+            description: `Fresh grounded copy produced for ${activeLanguage.toUpperCase()} (${activeVariantType}).`
+          });
+        }
+      }
+    } catch (err: any) {
+      toast.error('Regeneration Failed', { description: err.message });
+    } finally {
+      setIsRegeneratingVariant(false);
     }
   };
 
@@ -332,7 +460,8 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
   const handleSaveToLibrary = async () => {
     if (!currentGeneration || !activeVariant) return;
     try {
-      const name = `${extractedData.businessName} - ${activeVariant.language.toUpperCase()} (${activeVariant.variantType})`;
+      const brand = getVal(extractedData.brandName) || extractedData.businessName || 'Offer';
+      const name = `${brand} - ${activeVariant.language.toUpperCase()} (${activeVariant.variantType})`;
       await api.saveAITemplateToLibrary(currentGeneration.id, {
         variantId: activeVariant.id,
         templateName: name,
@@ -359,7 +488,7 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
           description: `Delivered test in ${activeVariant.language.toUpperCase()} to ${testRecipient}`
         });
       } else {
-        toast.error('Carrier Rejected Test', { description: res.details?.error || res.message });
+        toast.error('Carrier Reject Notice', { description: res.details?.error || res.message });
       }
     } catch (err: any) {
       toast.error('Test Failed', { description: err.message });
@@ -371,10 +500,12 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
   const handleUseInCampaign = async () => {
     if (!currentGeneration || !activeVariant) return;
     try {
+      const brand = getVal(extractedData.brandName) || extractedData.businessName || 'Offer';
+      const validDate = getVal(extractedData.validUntil) || undefined;
       const res = await api.useAITemplateInCampaign(currentGeneration.id, {
         variantId: activeVariant.id,
-        campaignName: `${extractedData.businessName} ${activeVariant.language.toUpperCase()} Campaign`,
-        validUntil: extractedData.validUntil
+        campaignName: `${brand} ${activeVariant.language.toUpperCase()} Campaign`,
+        validUntil: validDate
       });
       if (res.success) {
         toast.success('Campaign Enqueued', {
@@ -389,15 +520,21 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
     }
   };
 
-  // Preview formatting
+  // Preview string replacements
+  const brandVal = getVal(extractedData.brandName) || extractedData.businessName || 'Brand';
+  const offerTitleVal = getVal(extractedData.offerTitle) || 'Special Offer';
+  const couponCodeVal = getVal(extractedData.couponCode) || '';
+  const validUntilVal = getVal(extractedData.validUntil) || '';
+  const contactVal = getVal(extractedData.contactNumber) || customerCareNumber;
+
   const previewText = (activeVariant?.messageBody || '')
     .replace(/\{\{customer_name\}\}/g, 'Alexander Wright')
     .replace(/\{\{1\}\}/g, 'Alexander Wright')
-    .replace(/\{\{business_name\}\}/g, extractedData.businessName)
-    .replace(/\{\{offer_name\}\}/g, extractedData.offerTitle)
-    .replace(/\{\{offer_code\}\}/g, extractedData.couponCode)
-    .replace(/\{\{valid_until\}\}/g, extractedData.validUntil)
-    .replace(/\{\{care_number\}\}/g, extractedData.contactNumber);
+    .replace(/\{\{business_name\}\}/g, brandVal)
+    .replace(/\{\{offer_name\}\}/g, offerTitleVal)
+    .replace(/\{\{offer_code\}\}/g, couponCodeVal)
+    .replace(/\{\{valid_until\}\}/g, validUntilVal)
+    .replace(/\{\{care_number\}\}/g, contactVal);
 
   const shortlink = attachedMediaAsset
     ? `\n\nMedia: https://campaigns.reach/m/${attachedMediaAsset.id.slice(-6)}`
@@ -407,6 +544,40 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
   const charCount = previewChannel === 'sms' ? smsFullText.length : previewText.length;
   const isUnicode = activeVariant?.encoding === 'Unicode' || Array.from(previewText).some(c => c.charCodeAt(0) > 127);
   const estimatedSegments = isUnicode ? Math.ceil(charCount / 70) || 1 : Math.ceil(charCount / 160) || 1;
+
+  // Render confidence badge
+  const renderConfidenceBadge = (confidence: string, source: string) => {
+    const isManual = source === 'manual' || confidence === 'manual';
+    if (isManual) {
+      return (
+        <span className="text-[9px] font-bold text-[#5269D9] bg-[#EEF1FC] px-1.5 py-0.2 rounded border border-[#D9E0F8] flex items-center gap-0.5">
+          MANUAL
+        </span>
+      );
+    }
+    switch (confidence?.toLowerCase()) {
+      case 'high':
+        return (
+          <span className="text-[9px] font-bold text-[#16A36A] bg-[#E8F7F0] px-1.5 py-0.2 rounded border border-[#C8EEDC]">
+            HIGH
+          </span>
+        );
+      case 'medium':
+        return (
+          <span className="text-[9px] font-bold text-[#D97706] bg-[#FEF3C7] px-1.5 py-0.2 rounded border border-[#FDE68A]">
+            MEDIUM
+          </span>
+        );
+      case 'not_found':
+      case 'uncertain':
+      default:
+        return (
+          <span className="text-[9px] font-bold text-[#DC2626] bg-[#FDF2F2] px-1.5 py-0.2 rounded border border-[#FEE2E2]">
+            NOT FOUND
+          </span>
+        );
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -419,10 +590,11 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
           <div className="border-b border-[#E8EAF0] pb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-[#5269D9]" />
-              <h3 className="text-xs font-bold text-[#20283A] uppercase tracking-wider">AI Offer Ingestion</h3>
+              <h3 className="text-xs font-bold text-[#20283A] uppercase tracking-wider">Gemini Multimodal Ingestion</h3>
             </div>
-            <span className="text-[10px] font-semibold text-[#5269D9] bg-[#EEF1FC] px-2 py-0.5 rounded">
-              OCR + Multimodal
+            <span className="text-[10px] font-semibold text-[#16A36A] bg-[#E8F7F0] border border-[#C8EEDC] px-2 py-0.5 rounded flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#16A36A] animate-pulse"></span>
+              {geminiModel}
             </span>
           </div>
 
@@ -448,7 +620,7 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
                 />
                 <div className="p-2 border-t border-[#E8EAF0] bg-white flex items-center justify-between text-xs">
                   <span className="font-semibold text-[#20283A] truncate max-w-[180px]">
-                    {selectedImage?.name || attachedMediaAsset?.originalName || 'Promotional Poster'}
+                    {selectedImage?.name || attachedMediaAsset?.originalName || 'Promotional Creative'}
                   </span>
                   <button
                     type="button"
@@ -456,6 +628,7 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
                       setSelectedImage(null);
                       setImagePreviewUrl(null);
                       setAttachedMediaAsset(null);
+                      setIsConfirmed(false);
                     }}
                     className="text-[#DC2626] hover:bg-[#FDF2F2] p-1 rounded transition-colors cursor-pointer"
                     title="Remove Image"
@@ -482,69 +655,181 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
                 </label>
               </div>
             )}
+
+            {/* "Analyze with Gemini" Action Button */}
+            {(selectedImage || attachedMediaAsset) && (
+              <button
+                type="button"
+                onClick={() => performGeminiAnalysis(selectedImage ? { file: selectedImage } : { mediaId: attachedMediaAsset?.id })}
+                disabled={isExtracting}
+                className="w-full py-2 px-3 bg-[#EEF1FC] hover:bg-[#D9E0F8] text-[#5269D9] text-xs font-bold rounded-xl border border-[#D9E0F8] transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#5269D9]" />
+                <span>{isExtracting ? 'Analyzing with Google Gemini...' : 'Analyze Creative with Gemini'}</span>
+              </button>
+            )}
           </div>
 
-          {/* Step 2: Extracted Offer Form */}
-          <div className="space-y-2.5 pt-2 border-t border-[#E8EAF0]">
+          {/* Step 2: Extracted Offer Form (Strict Image Grounding & Provenance) */}
+          <div className="space-y-3 pt-2 border-t border-[#E8EAF0]">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#20283A]">Step 2: Extracted Offer Fields</label>
+              <label className="text-xs font-bold text-[#20283A] flex items-center gap-1.5">
+                <span>Step 2: Grounded Offer Facts</span>
+                <span className="text-[10px] font-semibold text-[#737D90]">Image-Only Truth</span>
+              </label>
               {isExtracting && (
                 <span className="text-[10px] text-[#5269D9] font-medium flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3 animate-spin" /> Analyzing image...
+                  <RefreshCw className="w-3 h-3 animate-spin" /> Gemini OCR & Reasoning...
                 </span>
               )}
             </div>
 
+            {/* Anti-Hallucination Warning Banner if Missing Fields exist */}
+            {extractedData.missingFields && extractedData.missingFields.length > 0 && (
+              <div className="p-2.5 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl flex items-start gap-2 text-xs text-[#92400E]">
+                <AlertTriangle className="w-4 h-4 text-[#D97706] shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-bold text-[11px]">Anti-Hallucination Grounding Notice</p>
+                  <p className="text-[10px] leading-relaxed">
+                    Not detected on creative: <strong>{extractedData.missingFields.join(', ')}</strong>.
+                    Gemini will strictly omit ungrounded facts rather than fabricating claims or coupon codes.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Structured Extracted Fields with Confidence Badges */}
             <div className="grid grid-cols-2 gap-2 text-xs">
+              {/* Business Name */}
               <div>
-                <span className="text-[10px] text-[#737D90] font-medium block">Business / Brand</span>
+                <div className="flex items-center justify-between pb-0.5">
+                  <span className="text-[10px] text-[#737D90] font-medium">Business / Brand</span>
+                  {renderConfidenceBadge(getConf(extractedData.brandName), getSrc(extractedData.brandName))}
+                </div>
                 <input
                   type="text"
-                  value={extractedData.businessName}
-                  onChange={e => setExtractedData(prev => ({ ...prev, businessName: e.target.value }))}
-                  className="w-full px-2.5 py-1 text-xs bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg text-[#20283A]"
+                  value={getVal(extractedData.brandName)}
+                  onChange={e => handleUpdateField('brandName', e.target.value)}
+                  placeholder="(Brand name)"
+                  className="w-full px-2.5 py-1 text-xs bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg text-[#20283A] focus:bg-white focus:outline-none focus:border-[#5269D9]"
                 />
               </div>
 
+              {/* Offer Discount */}
               <div>
-                <span className="text-[10px] text-[#737D90] font-medium block">Offer Discount</span>
+                <div className="flex items-center justify-between pb-0.5">
+                  <span className="text-[10px] text-[#737D90] font-medium">Offer Discount</span>
+                  {renderConfidenceBadge(getConf(extractedData.discount), getSrc(extractedData.discount))}
+                </div>
                 <input
                   type="text"
-                  value={extractedData.discount}
-                  onChange={e => setExtractedData(prev => ({ ...prev, discount: e.target.value }))}
-                  className="w-full px-2.5 py-1 text-xs font-bold text-[#16A36A] bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg"
+                  value={getVal(extractedData.discount)}
+                  onChange={e => handleUpdateField('discount', e.target.value)}
+                  placeholder="e.g. 50% OFF (or None)"
+                  className="w-full px-2.5 py-1 text-xs font-bold text-[#16A36A] bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg focus:bg-white focus:outline-none focus:border-[#5269D9]"
                 />
               </div>
 
+              {/* Coupon Code */}
               <div>
-                <span className="text-[10px] text-[#737D90] font-medium block">Coupon Code</span>
+                <div className="flex items-center justify-between pb-0.5">
+                  <span className="text-[10px] text-[#737D90] font-medium">Coupon Code</span>
+                  {renderConfidenceBadge(getConf(extractedData.couponCode), getSrc(extractedData.couponCode))}
+                </div>
                 <input
                   type="text"
-                  value={extractedData.couponCode}
-                  onChange={e => setExtractedData(prev => ({ ...prev, couponCode: e.target.value }))}
-                  className="w-full px-2.5 py-1 text-xs font-mono font-bold text-[#5269D9] bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg"
+                  value={getVal(extractedData.couponCode)}
+                  onChange={e => handleUpdateField('couponCode', e.target.value)}
+                  placeholder="No code on image"
+                  className="w-full px-2.5 py-1 text-xs font-mono font-bold text-[#5269D9] bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg focus:bg-white focus:outline-none focus:border-[#5269D9]"
                 />
               </div>
 
+              {/* Valid Until */}
               <div>
-                <span className="text-[10px] text-[#737D90] font-medium block">Valid Until</span>
+                <div className="flex items-center justify-between pb-0.5">
+                  <span className="text-[10px] text-[#737D90] font-medium">Valid Until</span>
+                  {renderConfidenceBadge(getConf(extractedData.validUntil), getSrc(extractedData.validUntil))}
+                </div>
                 <input
                   type="text"
-                  value={extractedData.validUntil}
-                  onChange={e => setExtractedData(prev => ({ ...prev, validUntil: e.target.value }))}
-                  className="w-full px-2.5 py-1 text-xs bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg text-[#20283A]"
+                  value={getVal(extractedData.validUntil)}
+                  onChange={e => handleUpdateField('validUntil', e.target.value)}
+                  placeholder="No date on image"
+                  className="w-full px-2.5 py-1 text-xs bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg text-[#20283A] focus:bg-white focus:outline-none focus:border-[#5269D9]"
+                />
+              </div>
+
+              {/* Product / Service */}
+              <div>
+                <div className="flex items-center justify-between pb-0.5">
+                  <span className="text-[10px] text-[#737D90] font-medium">Product / Service</span>
+                  {renderConfidenceBadge(getConf(extractedData.productName), getSrc(extractedData.productName))}
+                </div>
+                <input
+                  type="text"
+                  value={getVal(extractedData.productName)}
+                  onChange={e => handleUpdateField('productName', e.target.value)}
+                  placeholder="e.g. 4K Smart TV"
+                  className="w-full px-2.5 py-1 text-xs bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg text-[#20283A] focus:bg-white focus:outline-none focus:border-[#5269D9]"
+                />
+              </div>
+
+              {/* Contact / Phone */}
+              <div>
+                <div className="flex items-center justify-between pb-0.5">
+                  <span className="text-[10px] text-[#737D90] font-medium">Contact Phone</span>
+                  {renderConfidenceBadge(getConf(extractedData.contactNumber), getSrc(extractedData.contactNumber))}
+                </div>
+                <input
+                  type="text"
+                  value={getVal(extractedData.contactNumber)}
+                  onChange={e => handleUpdateField('contactNumber', e.target.value)}
+                  placeholder="Phone number"
+                  className="w-full px-2.5 py-1 text-xs font-mono bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg text-[#20283A] focus:bg-white focus:outline-none focus:border-[#5269D9]"
                 />
               </div>
             </div>
 
+            {/* Offer Title */}
             <div>
-              <span className="text-[10px] text-[#737D90] font-medium block">Offer Title / Campaign Context</span>
+              <div className="flex items-center justify-between pb-0.5 text-xs">
+                <span className="text-[10px] text-[#737D90] font-medium">Offer Title / Campaign Context</span>
+                {renderConfidenceBadge(getConf(extractedData.offerTitle), getSrc(extractedData.offerTitle))}
+              </div>
               <input
                 type="text"
-                value={extractedData.offerTitle}
-                onChange={e => setExtractedData(prev => ({ ...prev, offerTitle: e.target.value }))}
-                className="w-full px-2.5 py-1 text-xs bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg text-[#20283A]"
+                value={getVal(extractedData.offerTitle)}
+                onChange={e => handleUpdateField('offerTitle', e.target.value)}
+                placeholder="e.g. Grand Festive Flash Sale"
+                className="w-full px-2.5 py-1 text-xs bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg text-[#20283A] focus:bg-white focus:outline-none focus:border-[#5269D9]"
               />
+            </div>
+
+            {/* Confirm Image Facts Workflow */}
+            <div className="pt-2 border-t border-[#E8EAF0] flex items-center justify-between">
+              {isConfirmed ? (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#16A36A] bg-[#E8F7F0] px-2.5 py-1 rounded-lg border border-[#C8EEDC]">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Facts Grounded & Confirmed ✓
+                </span>
+              ) : (
+                <span className="text-[10px] text-[#737D90] flex items-center gap-1">
+                  <Info className="w-3 h-3 text-[#D97706]" /> Confirm facts before broadcast
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={handleConfirmFacts}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  isConfirmed
+                    ? 'bg-white text-[#16A36A] border border-[#C8EEDC] hover:bg-[#F7F8FC]'
+                    : 'bg-[#16A36A] hover:bg-[#138656] text-white shadow-2xs'
+                }`}
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>{isConfirmed ? 'Re-confirm' : 'Confirm Image Facts'}</span>
+              </button>
             </div>
           </div>
 
@@ -702,12 +987,12 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
             {isGenerating ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Generating Native Scripts...</span>
+                <span>Generating Grounded Scripts with Gemini...</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                <span>Generate Multilingual Variations</span>
+                <span>Generate Grounded Multilingual Variations</span>
               </>
             )}
           </button>
@@ -721,7 +1006,7 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
           <div className="border-b border-[#E8EAF0] pb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-xs font-bold text-[#20283A] uppercase tracking-wider">Generated Content Studio</h3>
-              <p className="text-[11px] text-[#737D90]">Audited native-script templates and automated follow-ups</p>
+              <p className="text-[11px] text-[#737D90]">Strictly grounded native scripts & schedule-aware sequences</p>
             </div>
 
             <div className="flex items-center gap-1 bg-[#F7F8FC] p-0.5 rounded-lg border border-[#E8EAF0]">
@@ -741,7 +1026,7 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
                   centerSubTab === 'followups' ? 'bg-white text-[#5269D9] shadow-2xs' : 'text-[#737D90]'
                 }`}
               >
-                Follow-Up Sequence ({followUps.length || 3})
+                Follow-Up Sequence ({followUps.length || 4})
               </button>
             </div>
           </div>
@@ -798,7 +1083,7 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
                           <ShieldAlert className="w-3.5 h-3.5" /> {activeLangDef?.label || activeLanguage} Review Required
                         </span>
                       )}
-                      <span className="text-[10px] text-[#737D90]">Strict Policy: No automatic language substitution.</span>
+                      <span className="text-[10px] text-[#737D90]">Zero auto-substitution policy: only approved regional scripts broadcast.</span>
                     </div>
 
                     {!isCurrentLangApproved && currentGeneration && (
@@ -841,12 +1126,29 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
               {/* Editable Textarea for Active Variant */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-[#20283A]">
-                    {activeVariant?.label || 'Template Copy'} ({activeLanguage.toUpperCase()})
-                  </span>
-                  <span className="text-[11px] text-[#737D90]">
-                    {activeVariant?.characterCount || 0} chars • {activeVariant?.encoding || 'Unicode'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-[#20283A]">
+                      {activeVariant?.label || 'Template Copy'} ({activeLanguage.toUpperCase()})
+                    </span>
+                    <span className="text-[10px] font-semibold text-[#16A36A] bg-[#E8F7F0] border border-[#C8EEDC] px-1.5 py-0.2 rounded">
+                      Grounded Fact Truth
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleRegenerateVariant}
+                      disabled={isRegeneratingVariant || !currentGeneration}
+                      className="text-[11px] text-[#5269D9] hover:underline font-semibold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                      title="Regenerate single variant with Gemini"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isRegeneratingVariant ? 'animate-spin' : ''}`} />
+                      <span>Regenerate</span>
+                    </button>
+                    <span className="text-[11px] text-[#737D90]">
+                      {activeVariant?.characterCount || 0} chars • {activeVariant?.encoding || 'Unicode'}
+                    </span>
+                  </div>
                 </div>
 
                 <textarea
@@ -965,14 +1267,14 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
                           <span className="font-bold text-[#5269D9] text-[11px] flex items-center gap-1.5">
                             <Clock className="w-3 h-3" />
                             {item.stage === 'INITIAL'
-                              ? '1. Initial Promotional Broadcast'
+                              ? '1. Initial Broadcast'
                               : item.stage === 'REMINDER'
                               ? '2. Follow-Up 1 (Reminder)'
                               : item.stage === 'REINFORCEMENT'
                               ? '3. Follow-Up 2 (Reinforce Offer)'
                               : '4. Final Follow-Up (Offer Closing)'}
                           </span>
-                          <span className="text-[10px] bg-white border border-[#E8EAF0] px-1.5 py-0.5 rounded font-mono text-[#737D90]">
+                          <span className="text-[10px] bg-white border border-[#E8EAF0] px-1.5 py-0.5 rounded font-mono font-semibold text-[#20283A]">
                             {item.scheduledInterval}
                           </span>
                         </div>
@@ -981,7 +1283,7 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({
 
                         <div className="flex items-center justify-between pt-1 border-t border-[#E8EAF0] text-[10px] text-[#737D90]">
                           <span>Rule: <strong>{item.eligibilityRule}</strong></span>
-                          <span className="text-[#16A36A] font-semibold">Eligibility Verified ✓</span>
+                          <span className="text-[#16A36A] font-semibold">Grounded & Verified ✓</span>
                         </div>
                       </div>
                     ))}

@@ -381,18 +381,33 @@ export type TemplateTone =
   | 'urgent'
   | 'premium';
 
+export interface ExtractedField<T = string> {
+  value: T | null;
+  confidence: 'high' | 'medium' | 'low' | 'not_found' | 'uncertain' | 'manual';
+  source: 'image' | 'manual';
+}
+
 export interface ExtractedOfferData {
-  businessName: string;
-  productName: string;
-  offerTitle: string;
-  discount: string;
-  couponCode: string;
-  validUntil: string;
-  terms: string;
-  contactNumber: string;
-  websiteUrl: string;
-  callToAction: string;
-  campaignContext: string;
+  brandName?: ExtractedField<string>;
+  productName?: ExtractedField<string> | string;
+  offerTitle?: ExtractedField<string> | string;
+  discount?: ExtractedField<string> | string;
+  couponCode?: ExtractedField<string> | string;
+  validUntil?: ExtractedField<string> | string;
+  productFeatures?: string[];
+  contactNumber?: ExtractedField<string> | string;
+  websiteUrl?: ExtractedField<string> | string;
+  callToAction?: ExtractedField<string> | string;
+  termsAndConditions?: string[];
+  missingFields?: string[];
+  uncertainFields?: string[];
+  isConfirmed?: boolean;
+  confirmedAt?: string;
+
+  // Flattened compatibility properties
+  businessName?: string;
+  terms?: string;
+  campaignContext?: string;
   confidenceScores?: Record<string, number>;
   needsConfirmation?: string[];
 }

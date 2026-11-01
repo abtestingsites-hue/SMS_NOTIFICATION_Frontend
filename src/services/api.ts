@@ -550,5 +550,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload)
     });
+  },
+
+  async confirmOfferFields(id: string, confirmedFields: any): Promise<any> {
+    return fetchJson(`/api/ai-templates/${id}/confirm-fields`, {
+      method: 'POST',
+      body: JSON.stringify({ confirmedFields })
+    });
+  },
+
+  async getGeminiStatus(): Promise<{ configured: boolean; model: string; fallbackModels: string[]; auditLogsCount: number }> {
+    return fetchJson('/api/ai-templates/gemini-status');
   }
 };
