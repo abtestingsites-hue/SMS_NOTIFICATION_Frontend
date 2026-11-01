@@ -20,6 +20,8 @@ export interface Customer {
   name: string;
   gender: string;
   age?: number | string;
+  category?: string;
+  language?: string;
   history?: string[];
   lastContacted?: number | string;
 }
@@ -337,6 +339,98 @@ export interface InAppNotification {
   createdAt: string;
   readAt?: string | null;
   metadata?: Record<string, any>;
+}
+
+// Phase 17: AI Multilingual Templates & Follow-up
+export type RegionalLanguage =
+  | 'english'
+  | 'tamil'
+  | 'hindi'
+  | 'telugu'
+  | 'malayalam'
+  | 'kannada'
+  | 'bengali'
+  | 'marathi'
+  | 'gujarati'
+  | 'punjabi'
+  | 'odia'
+  | 'urdu';
+
+export type TemplateTone =
+  | 'professional'
+  | 'friendly'
+  | 'promotional'
+  | 'festive'
+  | 'urgent'
+  | 'premium';
+
+export interface ExtractedOfferData {
+  businessName: string;
+  productName: string;
+  offerTitle: string;
+  discount: string;
+  couponCode: string;
+  validUntil: string;
+  terms: string;
+  contactNumber: string;
+  websiteUrl: string;
+  callToAction: string;
+  campaignContext: string;
+  confidenceScores?: Record<string, number>;
+  needsConfirmation?: string[];
+}
+
+export interface GeneratedTemplateVariant {
+  id: string;
+  generationId: string;
+  language: string;
+  channel: 'both' | 'whatsapp' | 'sms';
+  tone: string;
+  variantType: 'primary' | 'short' | 'friendly' | 'urgency' | 'whatsapp';
+  label?: string;
+  messageBody: string;
+  content?: string;
+  characterCount: number;
+  encoding: 'GSM-7' | 'Unicode';
+  estimatedSmsSegments: number;
+  approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  approved?: boolean;
+  approvedAt?: string | null;
+  approvedBy?: string | null;
+}
+
+export interface CampaignFollowUpContent {
+  id: string;
+  campaignId?: string | null;
+  generationId?: string | null;
+  sequenceNumber: number;
+  stage: 'INITIAL' | 'REMINDER' | 'REINFORCEMENT' | 'EXPIRY';
+  scheduledInterval: string;
+  language: string;
+  channel: 'both' | 'whatsapp' | 'sms';
+  messageBody: string;
+  content?: string;
+  eligibilityRule: 'ALL_ELIGIBLE' | 'NOT_REPLIED' | 'NOT_CONVERTED' | 'DELIVERED_ONLY';
+  approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+}
+
+export interface AIContentGeneration {
+  id: string;
+  userId?: string;
+  sourceMediaId?: string | null;
+  sourceMediaAsset?: MediaAsset | null;
+  mediaAsset?: MediaAsset | null;
+  extractedOfferData: ExtractedOfferData;
+  extractedData?: ExtractedOfferData;
+  languages: string[];
+  tone: TemplateTone;
+  channel: 'both' | 'whatsapp' | 'sms';
+  generationStatus: 'DRAFT' | 'ANALYZED' | 'GENERATED' | 'APPROVED';
+  approvalStatus?: 'DRAFT' | 'ANALYZED' | 'GENERATED' | 'APPROVED';
+  variants: GeneratedTemplateVariant[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 

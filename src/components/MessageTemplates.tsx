@@ -3,6 +3,7 @@ import type { MediaAsset, SavedTemplate } from '../types';
 import { api, API_BASE } from '../services/api';
 import { toast } from '../services/toast';
 import { MediaPickerModal } from './ui/MediaPickerModal';
+import { AITemplateGenerator } from './AITemplateGenerator';
 import {
   Upload,
   FileText,
@@ -12,7 +13,8 @@ import {
   Paperclip,
   Trash2,
   FolderOpen,
-  Plus
+  Plus,
+  Sparkles
 } from 'lucide-react';
 import { HorizontalBarChart } from './ui/HorizontalBarChart';
 
@@ -46,7 +48,7 @@ export const MessageTemplates: React.FC<MessageTemplatesProps> = ({
   selectedChannel: propSelectedChannel,
   setSelectedChannel: propSetSelectedChannel
 }) => {
-  const [activeTab, setActiveTab] = useState<'editor' | 'library' | 'ingestion' | 'categories'>('editor');
+  const [activeTab, setActiveTab] = useState<'editor' | 'ai-generator' | 'library' | 'ingestion' | 'categories'>('editor');
   const [templateFile, setTemplateFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -273,6 +275,17 @@ export const MessageTemplates: React.FC<MessageTemplatesProps> = ({
               }`}
             >
               Template Editor
+            </button>
+            <button
+              onClick={() => setActiveTab('ai-generator')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'ai-generator'
+                  ? 'bg-white text-[#5269D9] shadow-xs border border-[#5269D9]/30 font-bold'
+                  : 'text-[#737D90] hover:text-[#20283A]'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#5269D9]" />
+              AI Template Generator
             </button>
             <button
               onClick={() => setActiveTab('library')}
@@ -636,7 +649,23 @@ export const MessageTemplates: React.FC<MessageTemplatesProps> = ({
           </div>
         )}
 
-        {/* Tab 2: Saved Templates Library */}
+        {/* Tab 2: AI Template Generator */}
+        {activeTab === 'ai-generator' && (
+          <AITemplateGenerator
+            customerCareNumber={customerCareNumber}
+            onApplyTemplate={(appliedText, appliedMedia, appliedChannel) => {
+              setTemplate(appliedText);
+              if (appliedMedia) setAttachedMedia(appliedMedia);
+              if (appliedChannel) setChannel(appliedChannel);
+              setActiveTab('editor');
+              toast.success('Template Applied to Editor', {
+                description: 'AI-generated template and media loaded into active template editor.'
+              });
+            }}
+          />
+        )}
+
+        {/* Tab 3: Saved Templates Library */}
         {activeTab === 'library' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">

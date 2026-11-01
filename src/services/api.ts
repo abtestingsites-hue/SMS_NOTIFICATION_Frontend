@@ -14,7 +14,12 @@ import type {
   GovernanceRules,
   InAppNotification,
   SavedTemplate,
-  TemplateConfig
+  TemplateConfig,
+  AIContentGeneration,
+  GeneratedTemplateVariant,
+  CampaignFollowUpContent,
+  ExtractedOfferData,
+  TemplateTone
 } from '../types';
 
 export const API_BASE = (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_BASE_URL || (
@@ -428,5 +433,103 @@ export const api = {
     if (options?.timeZone) params.append('timeZone', options.timeZone);
     const query = params.toString() ? `?${params.toString()}` : '';
     return fetchJson(`/api/analytics/telemetry${query}`);
+  },
+
+  // 15. Phase 17: AI Multilingual Template Generator
+  async analyzeOfferImage(param: { mediaId?: string; file?: File }): Promise<{
+    success: boolean;
+    sourceMediaId?: string | null;
+    sourceMediaAsset?: MediaAsset | null;
+    extractedOfferData: ExtractedOfferData;
+  }> {
+    if (param.file) {
+      const formData = new FormData();
+      formData.append('image', param.file);
+      if (param.mediaId) formData.append('mediaId', param.mediaId);
+      const res = await fetch(`${API_BASE}/api/ai-templates/analyze-image`, {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) throw new Error('Image analysis failed');
+      return res.json();
+    }
+    return fetchJson('/api/ai-templates/analyze-image', {
+      method: 'POST',
+      body: JSON.stringify({ mediaId: param.mediaId })
+    });
+  },
+
+  async generateAITemplates(payload: {
+    generationId?: string;
+    userId?: string;
+    sourceMediaId?: string | null;
+    sourceMediaAsset?: MediaAsset | null;
+    extractedOfferData: ExtractedOfferData;
+    languages: string[];
+    channel: 'both' | 'whatsapp' | 'sms';
+    tone: TemplateTone;
+  }): Promise<AIContentGeneration> {
+    return fetchJson('/api/ai-templates/generate', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async generateAIFollowUps(payload: {
+    generationId?: string;
+    campaignId?: string | null;
+    schedule?: Array<{ sequenceNumber: number; interval?: string; stage?: string }>;
+    languages?: string[];
+    channel?: string;
+    tone?: string;
+    extractedOfferData?: ExtractedOfferData;
+  }): Promise<{ success: boolean; followUps: CampaignFollowUpContent[] }> {
+    return fetchJson('/api/ai-templates/generate-followups', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async getAITemplate(id: string): Promise<AIContentGeneration> {
+    return fetchJson(`/api/ai-templates/${id}`);
+  },
+
+  async getAITemplates(): Promise<AIContentGeneration[]> {
+    return fetchJson('/api/ai-templates');
+  },
+
+  async updateAITemplateVariant(id: string, variantId: string, messageBody: string): Promise<{ success: boolean; variant: GeneratedTemplateVariant }> {
+    return fetchJson(`/api/ai-templates/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ variantId, messageBody })
+    });
+  },
+
+  async approveAITemplateVariant(id: string, variantId?: string, approveAll = false): Promise<any> {
+    return fetchJson(`/api/ai-templates/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ variantId, approveAll })
+    });
+  },
+
+  async saveAITemplateToLibrary(id: string, payload: { variantId?: string; templateName?: string; category?: string; setActive?: boolean }): Promise<any> {
+    return fetchJson(`/api/ai-templates/${id}/save`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async testAITemplateVariant(id: string, payload: { variantId?: string; recipient?: string; recipientName?: string }): Promise<any> {
+    return fetchJson(`/api/ai-templates/${id}/test`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async useAITemplateInCampaign(id: string, payload: { variantId?: string; campaignName?: string; validUntil?: string; targetAudience?: string; scheduleDelayHours?: number }): Promise<any> {
+    return fetchJson(`/api/ai-templates/${id}/use-in-campaign`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
   }
 };
