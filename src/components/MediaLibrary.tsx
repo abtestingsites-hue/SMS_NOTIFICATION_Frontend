@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { MediaAsset } from '../types';
-import { api } from '../services/api';
+import { api, API_BASE } from '../services/api';
 import { toast } from '../services/toast';
 import { SearchInput } from './ui/SearchInput';
 import {
@@ -90,6 +90,19 @@ export const MediaLibrary: React.FC = () => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const getMediaStreamUrl = (asset?: MediaAsset | null) => {
+    if (!asset) return '';
+    const url = asset.assetStreamUrl || asset.url || '';
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+      return url;
+    }
+    if (url.startsWith('/')) {
+      return `${API_BASE}${url}`;
+    }
+    return `${API_BASE}/${url}`;
   };
 
   return (
@@ -247,7 +260,7 @@ export const MediaLibrary: React.FC = () => {
               <div className="h-40 bg-[#F7F8FC] flex items-center justify-center overflow-hidden relative border-b border-[#E8EAF0]">
                 {asset.mediaType === 'image' ? (
                   <img
-                    src={asset.assetStreamUrl || asset.url}
+                    src={getMediaStreamUrl(asset)}
                     alt={asset.caption || asset.originalName}
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -328,18 +341,18 @@ export const MediaLibrary: React.FC = () => {
 
             <div className="max-h-80 overflow-hidden rounded-lg bg-[#F7F8FC] flex items-center justify-center border border-[#E8EAF0]">
               {previewAsset.mediaType === 'image' ? (
-                <img src={previewAsset.assetStreamUrl || previewAsset.url} alt={previewAsset.originalName} className="max-h-80 w-auto object-contain" />
+                <img src={getMediaStreamUrl(previewAsset)} alt={previewAsset.originalName} className="max-h-80 w-auto object-contain" />
               ) : (
                 <div className="p-8 text-center text-xs text-[#737D90]">
                   Document preview available at direct stream URL: <br />
-                  <code className="text-[#5269D9] font-mono text-[11px] block mt-2">{previewAsset.assetStreamUrl || previewAsset.url}</code>
+                  <code className="text-[#5269D9] font-mono text-[11px] block mt-2">{getMediaStreamUrl(previewAsset)}</code>
                 </div>
               )}
             </div>
 
             <div className="text-xs space-y-1 text-[#737D90]">
               <div><strong>SHA-256:</strong> <span className="font-mono text-[10px]">{previewAsset.checksum || 'Verified Immutable'}</span></div>
-              <div><strong>Direct URL:</strong> <a href={previewAsset.assetStreamUrl || previewAsset.url} target="_blank" rel="noreferrer" className="text-[#5269D9] underline font-mono text-[10px]">Open Stream</a></div>
+              <div><strong>Direct URL:</strong> <a href={getMediaStreamUrl(previewAsset)} target="_blank" rel="noreferrer" className="text-[#5269D9] underline font-mono text-[10px]">Open Stream</a></div>
             </div>
           </div>
         </div>
