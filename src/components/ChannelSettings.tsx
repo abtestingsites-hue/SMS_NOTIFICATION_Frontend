@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { GovernanceSuppression } from './GovernanceSuppression';
+import { AppearanceBranding } from './AppearanceBranding';
 import { toast } from '../services/toast';
 import { PageHeader } from './ui';
 import {
   ShieldCheck,
   PhoneForwarded,
-  Save
+  Save,
+  Palette
 } from 'lucide-react';
 
 interface ChannelSettingsProps {
@@ -29,7 +31,7 @@ export const ChannelSettings: React.FC<ChannelSettingsProps> = ({
   platform,
   onSaveCareSettings
 }) => {
-  const [activeTab, setActiveTab] = useState<'gateway' | 'governance'>('gateway');
+  const [activeTab, setActiveTab] = useState<'gateway' | 'governance' | 'branding'>('gateway');
 
   const handleSave = () => {
     onSaveCareSettings(customerCareNumber, sendToCustomerCare, platform);
@@ -128,6 +130,17 @@ export const ChannelSettings: React.FC<ChannelSettingsProps> = ({
           <ShieldCheck className="w-4 h-4" />
           <span>Customer Safety & Governance Registry</span>
         </button>
+        <button
+          onClick={() => setActiveTab('branding')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'branding'
+              ? 'bg-[#EEF1FC] text-[#5269D9] shadow-2xs'
+              : 'text-[#737D90] hover:text-[#20283A] hover:bg-[#F7F8FC]'
+          }`}
+        >
+          <Palette className="w-4 h-4" />
+          <span>Appearance & Branding</span>
+        </button>
       </div>
 
       {activeTab === 'gateway' ? (
@@ -218,8 +231,10 @@ export const ChannelSettings: React.FC<ChannelSettingsProps> = ({
             </div>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'governance' ? (
         <GovernanceSuppression />
+      ) : (
+        <AppearanceBranding />
       )}
     </div>
   );
