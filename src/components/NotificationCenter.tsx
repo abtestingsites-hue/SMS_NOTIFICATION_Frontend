@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { InAppNotification, NavModule } from '../types';
 import { api } from '../services/api';
 import { toast } from '../services/toast';
@@ -10,14 +10,14 @@ import {
   AlertCircle,
   Info,
   CheckCheck,
+  Check,
   Trash2,
   X,
-  ExternalLink,
   Shield,
   Send,
   Zap,
   Sliders,
-  Sparkles
+  ExternalLink
 } from 'lucide-react';
 
 interface NotificationCenterProps {
@@ -36,9 +36,47 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   onNavigate
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>('ALL');
-  const [filterUnreadOnly, setFilterUnreadOnly] = useState<boolean>(false);
+  const [showAll, setShowAll] = useState<boolean>(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  // Close on Escape or click outside without backdrop overlay
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let cleanupClick: (() => void) | null = null;
+
+    const timer = setTimeout(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        const target = event.target as HTMLElement;
+        // Prevent closing if clicking the trigger bell in the header
+        if (target.closest('[data-notification-trigger="true"]')) {
+          return;
+        }
+        if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+          onClose();
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      cleanupClick = () => document.removeEventListener('mousedown', handleClickOutside);
+    }, 50);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      clearTimeout(timer);
+      if (cleanupClick) cleanupClick();
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -47,17 +85,17 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
     { id: 'CAMPAIGN', label: 'Campaigns' },
     { id: 'SYSTEM', label: 'System' },
     { id: 'SECURITY', label: 'Security' },
-    { id: 'AUTOMATION', label: 'Automations' },
-    { id: 'GOVERNANCE', label: 'Governance' }
+    { id: 'AUTOMATION', label: 'Automations' }
   ];
 
   const filtered = notifications.filter((n) => {
     if (activeCategory !== 'ALL' && n.category !== activeCategory) return false;
-    if (filterUnreadOnly && n.isRead) return false;
     return true;
   });
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+  // Maximum of 5 recent notifications unless "View All" is toggled
+  const displayNotifications = showAll ? filtered : filtered.slice(0, 5);
 
   const formatRelativeTime = (isoString: string): string => {
     try {
@@ -74,14 +112,14 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
       if (diffDays === 1) return 'Yesterday';
       return `${diffDays}d ago`;
     } catch {
-      return 'Recently';
+      return 'Recent';
     }
   };
 
   const handleMarkAsRead = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    setProcessingId(id);
     try {
-      setProcessingId(id);
       await api.markNotificationRead(id);
       onRefresh();
     } catch (err: any) {
@@ -93,25 +131,23 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
   const handleMarkAllRead = async () => {
     try {
-      const res = await api.markAllNotificationsRead();
-      toast.success('All notifications marked as read', {
-        description: `${res.updatedCount || 0} items updated.`
-      });
+      await api.markAllNotificationsRead();
+      toast.success('All notifications marked as read');
       onRefresh();
     } catch (err: any) {
-      toast.error('Error marking all read', { description: err.message });
+      toast.error('Failed to mark all as read', { description: err.message });
     }
   };
 
   const handleDelete = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    setProcessingId(id);
     try {
-      setProcessingId(id);
       await api.deleteNotification(id);
-      toast.info('Notification dismissed');
+      toast.info('Notification removed');
       onRefresh();
     } catch (err: any) {
-      toast.error('Failed to delete notification', { description: err.message });
+      toast.error('Failed to remove notification', { description: err.message });
     } finally {
       setProcessingId(null);
     }
@@ -141,6 +177,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
       const validModules: NavModule[] = [
         'overview',
         'console',
+        'builder',
         'audience',
         'templates',
         'media',
@@ -163,217 +200,229 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   const getNotificationIcon = (type: string, category: string) => {
     switch (type) {
       case 'success':
-        return <CheckCircle2 className="w-4 h-4 text-[#16A36A]" />;
+        return <CheckCircle2 className="w-4 h-4 text-[#8FBC8B] dark:text-[#17B169]" />;
       case 'error':
-        return <AlertCircle className="w-4 h-4 text-[#D94D59]" />;
+        return <AlertCircle className="w-4 h-4 text-[#ED2939] dark:text-[#FF0000]" />;
       case 'warning':
-        return <AlertTriangle className="w-4 h-4 text-[#E5A23B]" />;
+        return <AlertTriangle className="w-4 h-4 text-[#FF9D00] dark:text-[#FF5F1F]" />;
       default:
-        if (category === 'SECURITY') return <Shield className="w-4 h-4 text-[#5269D9]" />;
-        if (category === 'CAMPAIGN') return <Send className="w-4 h-4 text-[#5269D9]" />;
-        if (category === 'AUTOMATION') return <Zap className="w-4 h-4 text-[#5269D9]" />;
-        if (category === 'GOVERNANCE') return <Sliders className="w-4 h-4 text-[#5269D9]" />;
-        return <Info className="w-4 h-4 text-[#5269D9]" />;
+        if (category === 'SECURITY') return <Shield className="w-4 h-4 text-[#0000FF] dark:text-[#60A5FA]" />;
+        if (category === 'CAMPAIGN') return <Send className="w-4 h-4 text-[#0000FF] dark:text-[#60A5FA]" />;
+        if (category === 'AUTOMATION') return <Zap className="w-4 h-4 text-[#0000FF] dark:text-[#60A5FA]" />;
+        if (category === 'GOVERNANCE') return <Sliders className="w-4 h-4 text-[#0000FF] dark:text-[#60A5FA]" />;
+        return <Info className="w-4 h-4 text-[#0000FF] dark:text-[#60A5FA]" />;
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true">
-      {/* Backdrop */}
+    <>
+      {/* 
+        COMPACT FLOATING NOTIFICATION POPUP (Phase 20.3)
+        Anchored below header notification bell without covering or blurring the application.
+      */}
       <div
-        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
-        onClick={onClose}
-      />
-
-      {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-white border-l border-[#E8EAF0] shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
-          {/* Header */}
-          <div className="p-4 sm:p-5 border-b border-[#E8EAF0] flex items-center justify-between bg-white shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-[#EEF1FC] text-[#5269D9] flex items-center justify-center relative">
-                <Bell className="w-4.5 h-4.5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#D94D59] rounded-full ring-2 ring-white" />
+        ref={popupRef}
+        id="notification-popup-modal"
+        data-notification-popup="true"
+        role="dialog"
+        aria-label="Notifications"
+        className="fixed top-14 sm:top-16 right-3 sm:right-6 z-50 w-[380px] sm:w-[420px] max-w-[calc(100vw-24px)] max-h-[520px] bg-[var(--color-surface,#FFFFFF)] border border-[var(--color-border,#E4E8E4)] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+      >
+        {/* 1. Popup Header */}
+        <div className="p-3.5 sm:p-4 border-b border-[var(--color-border)] flex items-center justify-between shrink-0 bg-[var(--color-surface)]">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary)] flex items-center justify-center shrink-0">
+              <Bell className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-[var(--color-text-primary)] truncate">Notifications</h2>
+                {unreadCount > 0 ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ED2939]/15 text-[#ED2939] dark:bg-[#FF0000]/20 dark:text-[#FF0000] shrink-0">
+                    {unreadCount} new
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#8FBC8B]/20 text-[#2D6A2E] dark:bg-[#17B169]/20 dark:text-[#17B169] shrink-0">
+                    All caught up
+                  </span>
                 )}
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-bold text-[#20283A]">Notifications</h2>
-                  {unreadCount > 0 ? (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#D94D59]/10 text-[#D94D59]">
-                      {unreadCount} unread
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#E8F7F0] text-[#16A36A]">
-                      All caught up
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-[#737D90] mt-0.5">Campaigns, automations, and gateway events</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1">
-              {unreadCount > 0 && (
-                <button
-                  onClick={handleMarkAllRead}
-                  title="Mark all as read"
-                  className="p-1.5 rounded-lg text-[#737D90] hover:text-[#5269D9] hover:bg-[#EEF1FC] transition-colors cursor-pointer"
-                >
-                  <CheckCheck className="w-4 h-4" />
-                </button>
-              )}
-              {notifications.length > 0 && (
-                <button
-                  onClick={handleClearAll}
-                  title="Clear all"
-                  className="p-1.5 rounded-lg text-[#737D90] hover:text-[#D94D59] hover:bg-red-50 transition-colors cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-lg text-[#737D90] hover:text-[#20283A] hover:bg-[#F7F8FC] transition-colors cursor-pointer ml-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <p className="text-[10px] text-[var(--color-text-secondary)] truncate">
+                Campaign, carrier & system updates
+              </p>
             </div>
           </div>
 
-          {/* Filter Bar */}
-          <div className="p-3 border-b border-[#E8EAF0] bg-[#F7F8FC] flex items-center justify-between gap-2 overflow-x-auto shrink-0">
-            <div className="flex items-center gap-1">
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setActiveCategory(c.id)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer shrink-0 ${
-                    activeCategory === c.id
-                      ? 'bg-white text-[#5269D9] shadow-2xs border border-[#E8EAF0]'
-                      : 'text-[#737D90] hover:text-[#20283A]'
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={handleMarkAllRead}
+                title="Mark all as read"
+                className="p-1.5 rounded-lg text-[var(--color-text-secondary)] hover:text-[#0000FF] hover:bg-[var(--color-hover)] transition-colors cursor-pointer"
+              >
+                <CheckCheck className="w-4 h-4" />
+              </button>
+            )}
             <button
-              onClick={() => setFilterUnreadOnly(!filterUnreadOnly)}
-              className={`text-[10px] font-semibold px-2 py-0.5 rounded cursor-pointer shrink-0 border ${
-                filterUnreadOnly
-                  ? 'bg-[#EEF1FC] text-[#5269D9] border-[#5269D9]/30'
-                  : 'bg-white text-[#737D90] border-[#E8EAF0] hover:text-[#20283A]'
-              }`}
+              type="button"
+              onClick={onClose}
+              aria-label="Close notification popup"
+              className="p-1.5 rounded-lg text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-hover)] transition-colors cursor-pointer"
             >
-              Unread
+              <X className="w-4 h-4" />
             </button>
           </div>
+        </div>
 
-          {/* Notifications List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-[#E8EAF0] bg-white">
-            {filtered.length > 0 ? (
-              filtered.map((item) => (
+        {/* 2. Compact Category Filter Pills */}
+        <div className="px-3 py-1.5 border-b border-[var(--color-border)] flex items-center gap-1 overflow-x-auto bg-[var(--color-surface-secondary)] shrink-0">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg shrink-0 transition-colors cursor-pointer ${
+                activeCategory === cat.id
+                  ? 'bg-[#0000FF] text-white shadow-2xs font-bold'
+                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface)]'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 3. Scrollable Notification List (Max 5 Recent items default) */}
+        <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 max-h-[340px]">
+          {displayNotifications.length === 0 ? (
+            <div className="py-8 px-4 text-center space-y-2">
+              <div className="w-10 h-10 rounded-full mx-auto bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] flex items-center justify-center">
+                <Bell className="w-5 h-5 opacity-60" />
+              </div>
+              <div className="text-xs font-bold text-[var(--color-text-primary)]">No notifications</div>
+              <p className="text-[11px] text-[var(--color-text-secondary)] max-w-xs mx-auto">
+                System, campaign, and carrier events will appear here in real-time.
+              </p>
+            </div>
+          ) : (
+            displayNotifications.map((notif) => {
+              const isProcessing = processingId === notif.id;
+              return (
                 <div
-                  key={item.id}
-                  onClick={() => handleItemClick(item)}
-                  className={`p-4 transition-colors cursor-pointer relative group flex items-start gap-3 ${
-                    item.isRead ? 'bg-white hover:bg-[#F7F8FC]/60' : 'bg-[#EEF1FC]/30 hover:bg-[#EEF1FC]/50'
+                  key={notif.id}
+                  onClick={() => handleItemClick(notif)}
+                  className={`p-2.5 rounded-xl border transition-all cursor-pointer group flex items-start gap-2.5 relative ${
+                    notif.isRead
+                      ? 'bg-[var(--color-surface)] border-[var(--color-border)] opacity-80 hover:opacity-100 hover:border-[#0000FF]'
+                      : 'bg-[var(--color-surface-secondary)] border-[var(--color-border)] hover:border-[#0000FF] shadow-2xs'
                   }`}
                 >
-                  {/* Category / Type Icon */}
-                  <div className="w-8 h-8 rounded-lg bg-white border border-[#E8EAF0] shadow-2xs flex items-center justify-center shrink-0 mt-0.5">
-                    {getNotificationIcon(item.type, item.category)}
+                  {/* Status Icon */}
+                  <div className="w-7 h-7 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-center shrink-0 mt-0.5">
+                    {getNotificationIcon(notif.type, notif.category)}
                   </div>
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0 pr-6">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs font-bold text-[#20283A] truncate">{item.title}</span>
-                        {!item.isRead && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#5269D9] shrink-0" />
-                        )}
-                      </div>
-                      <span className="text-[10px] font-mono text-[#737D90] shrink-0">
-                        {formatRelativeTime(item.createdAt)}
+                  {/* Body Content */}
+                  <div className="flex-1 min-w-0 pr-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <h4 className="text-xs font-bold text-[var(--color-text-primary)] truncate">
+                        {notif.title}
+                      </h4>
+                      <span className="text-[9.5px] font-mono text-[var(--color-text-secondary)] shrink-0">
+                        {formatRelativeTime(notif.createdAt)}
                       </span>
                     </div>
 
-                    <p className="text-xs text-[#5A6478] mt-1 leading-relaxed line-clamp-2">
-                      {item.message}
+                    <p className="text-[11px] text-[var(--color-text-secondary)] leading-snug line-clamp-2 mt-0.5">
+                      {notif.message}
                     </p>
 
-                    <div className="flex items-center justify-between mt-2 pt-1 border-t border-[#E8EAF0]/40">
-                      <span className="text-[9px] font-bold font-mono tracking-wider uppercase text-[#737D90] bg-[#F7F8FC] px-1.5 py-0.5 rounded border border-[#E8EAF0]">
-                        {item.category}
-                      </span>
-
-                      {item.actionUrl && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#5269D9] group-hover:underline">
-                          <span>View Module</span>
-                          <ExternalLink className="w-3 h-3" />
+                    {/* Meta info & Action hint */}
+                    <div className="flex items-center justify-between mt-1 pt-1 border-t border-[var(--color-border)] text-[9.5px] text-[var(--color-text-secondary)]">
+                      <span className="uppercase font-mono tracking-wider">{notif.category}</span>
+                      {notif.actionUrl && (
+                        <span className="flex items-center gap-0.5 text-[#0000FF] dark:text-[#60A5FA] font-medium">
+                          <span>Open</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Actions overlay */}
-                  <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {!item.isRead && (
+                  {/* Quick Action Hover Bar */}
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    {!notif.isRead && (
                       <button
-                        onClick={(e) => handleMarkAsRead(item.id, e)}
-                        disabled={processingId === item.id}
+                        type="button"
+                        onClick={(e) => handleMarkAsRead(notif.id, e)}
+                        disabled={isProcessing}
                         title="Mark as read"
-                        className="p-1 rounded text-[#737D90] hover:text-[#5269D9] hover:bg-white border border-[#E8EAF0] shadow-2xs"
+                        className="p-1 rounded bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[#0000FF] transition-colors"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <Check className="w-3 h-3" />
                       </button>
                     )}
                     <button
-                      onClick={(e) => handleDelete(item.id, e)}
-                      disabled={processingId === item.id}
-                      title="Dismiss"
-                      className="p-1 rounded text-[#737D90] hover:text-[#D94D59] hover:bg-white border border-[#E8EAF0] shadow-2xs"
+                      type="button"
+                      onClick={(e) => handleDelete(notif.id, e)}
+                      disabled={isProcessing}
+                      title="Delete notification"
+                      className="p-1 rounded bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[#ED2939] dark:hover:text-[#FF0000] transition-colors"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-16 px-6 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-[#EEF1FC] text-[#5269D9] flex items-center justify-center mx-auto mb-3">
-                  <Sparkles className="w-6 h-6" />
-                </div>
-                <h3 className="text-sm font-bold text-[#20283A]">No notifications</h3>
-                <p className="text-xs text-[#737D90] mt-1 max-w-xs mx-auto">
-                  {filterUnreadOnly
-                    ? 'No unread notifications matching current filter.'
-                    : 'System, campaign, and carrier events will appear here in real-time.'}
-                </p>
-              </div>
-            )}
-          </div>
 
-          {/* Footer */}
-          <div className="p-3 border-t border-[#E8EAF0] bg-[#F7F8FC] text-center text-[10px] text-[#737D90] font-mono shrink-0">
-            Persistent In-App Notification Stream · Telephony v2.6
-          </div>
+                  {/* Unread dot */}
+                  {!notif.isRead && (
+                    <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-[#0000FF] group-hover:opacity-0 transition-opacity" />
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
+
+        {/* 4. Popup Footer */}
+        {notifications.length > 0 && (
+          <div className="px-3.5 py-2.5 border-t border-[var(--color-border)] bg-[var(--color-surface-secondary)] flex items-center justify-between text-xs shrink-0">
+            <span className="text-[11px] text-[var(--color-text-secondary)]">
+              Showing {displayNotifications.length} of {filtered.length}
+            </span>
+
+            <div className="flex items-center gap-3">
+              {filtered.length > 5 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAll(!showAll)}
+                  className="text-xs font-bold text-[#0000FF] dark:text-[#60A5FA] hover:underline cursor-pointer"
+                >
+                  {showAll ? 'Show 5 Recent' : `View All (${filtered.length})`}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="text-xs font-semibold text-[#ED2939] dark:text-[#FF0000] hover:underline cursor-pointer"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Confirmation Dialog for Clearing Notifications */}
+      {/* Standardized Confirmation Dialog for Clear All */}
       <ConfirmationDialog
         isOpen={isClearConfirmOpen}
-        title="Clear All Notifications"
-        description="Are you sure you want to clear all notifications from history? This action cannot be undone."
-        confirmLabel="Clear All"
+        title="Clear All Notifications?"
+        description="Are you sure you want to remove all notification history records? This operation cannot be undone."
+        confirmLabel="Clear Notifications"
+        cancelLabel="Keep History"
         confirmVariant="danger"
         onConfirm={confirmClearAll}
         onCancel={() => setIsClearConfirmOpen(false)}
       />
-    </div>
+    </>
   );
 };

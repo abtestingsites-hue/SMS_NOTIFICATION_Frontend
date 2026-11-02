@@ -5,10 +5,10 @@
   [data-theme="light"] {
     color-scheme: light;
 
-    /* Light Theme Palette - Exact Administrator Specification */
+    /* Light Theme Palette - Exact Enterprise Brand System */
     --color-background: #FFFFFF;
     --color-surface: #FFFFFF;
-    --color-surface-secondary: #F8F9FA;
+    --color-surface-secondary: #F5F7F5;
     --color-surface-elevated: #FFFFFF;
     --color-primary: #0000FF;
     --color-primary-hover: #0000CC;
@@ -26,14 +26,14 @@
     --color-warning-light: #FFF8EB;
     --color-warning-text: #B45309;
     --color-text-primary: #000000;
-    --color-text-secondary: #4B5563;
+    --color-text-secondary: #454B45;
     --color-text-muted: #6B7280;
-    --color-border: #E5E7EB;
-    --color-border-subtle: #F3F4F6;
+    --color-border: #E4E8E4;
+    --color-border-subtle: #F0F4F0;
     --color-input-background: #FFFFFF;
-    --color-hover: #F3F4F6;
+    --color-hover: #F5F7F5;
     --color-focus-ring: rgba(0, 0, 255, 0.25);
-    --color-chart-grid: #E5E7EB;
+    --color-chart-grid: #E4E8E4;
     --color-overlay: rgba(0, 0, 0, 0.4);
 
     /* Legacy mapping */
@@ -60,11 +60,11 @@
   .dark {
     color-scheme: dark;
 
-    /* Dark Theme Palette - Exact Administrator Specification */
+    /* Dark Theme Palette - Exact Enterprise Brand System */
     --color-background: #000000;
-    --color-surface: #121316;
-    --color-surface-secondary: #181A20;
-    --color-surface-elevated: #1E2028;
+    --color-surface: #191919;
+    --color-surface-secondary: #101010;
+    --color-surface-elevated: #242424;
     --color-primary: #0000FF;
     --color-primary-hover: #1A38FF;
     --color-primary-light: #0A1438;
@@ -83,12 +83,12 @@
     --color-text-primary: #FFFFFF;
     --color-text-secondary: #C0C0C0; /* Silver Grey */
     --color-text-muted: #8E95A5;
-    --color-border: #2E323D;
-    --color-border-subtle: #1F222B;
-    --color-input-background: #0D0E12;
-    --color-hover: #1E212B;
+    --color-border: #303030;
+    --color-border-subtle: #202020;
+    --color-input-background: #101010;
+    --color-hover: #222222;
     --color-focus-ring: rgba(0, 0, 255, 0.5);
-    --color-chart-grid: #262933;
+    --color-chart-grid: #282828;
     --color-overlay: rgba(0, 0, 0, 0.85);
 
     /* Legacy mapping */

@@ -113,6 +113,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Notification Bell */}
         <button
           onClick={onOpenNotifications}
+          data-notification-trigger="true"
           aria-label={`Notifications (${unreadNotificationCount} unread)`}
           title={unreadNotificationCount > 0 ? `${unreadNotificationCount} unread notifications` : 'View notifications'}
           className="relative p-2 text-[#737D90] hover:text-[#20283A] rounded-lg hover:bg-[#F6F7FB] cursor-pointer transition-colors"

@@ -52,7 +52,7 @@ const LIGHT_PALETTE: ColorSwatch[] = [
     hex: '#FFFFFF',
     purpose: 'Main application background',
     textColor: '#000000',
-    borderColor: '#E5E7EB'
+    borderColor: '#E4E8E4'
   },
   {
     role: 'Text',
@@ -98,7 +98,7 @@ const DARK_PALETTE: ColorSwatch[] = [
     hex: '#000000',
     purpose: 'Main application background',
     textColor: '#FFFFFF',
-    borderColor: '#2E323D'
+    borderColor: '#303030'
   }
 ];
 

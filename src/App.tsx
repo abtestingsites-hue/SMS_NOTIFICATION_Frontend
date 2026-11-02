@@ -347,7 +347,7 @@ export default function App() {
           integrationStatus={integrationStatus}
           onNavigateIntegrations={() => setActiveNav('integrations')}
           unreadNotificationCount={unreadNotifCount}
-          onOpenNotifications={() => setNotificationCenterOpen(true)}
+          onOpenNotifications={() => setNotificationCenterOpen(prev => !prev)}
         />
 
         {/* Dynamic Route Content */}
