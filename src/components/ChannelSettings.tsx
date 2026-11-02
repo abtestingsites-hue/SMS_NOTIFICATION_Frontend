@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GovernanceSuppression } from './GovernanceSuppression';
 import { toast } from '../services/toast';
+import { PageHeader } from './ui';
 import {
   ShieldCheck,
   PhoneForwarded,
@@ -39,6 +40,29 @@ export const ChannelSettings: React.FC<ChannelSettingsProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Standardized Page Header */}
+      <PageHeader
+        breadcrumbs={[{ label: 'System & Security' }, { label: 'Channel & Care Settings' }]}
+        title="Channel & Care Settings"
+        subtitle="Telephony gateway routing, outbound carrier dispatch numbers, and compliance opt-out governance."
+        badge={
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#E8F7F0] text-[#16A36A] border border-[#C8EEDC]">
+            ● Carrier Active
+          </span>
+        }
+        actions={
+          activeTab === 'gateway' ? (
+            <button
+              onClick={handleSave}
+              className="bg-[#5269D9] hover:bg-[#4056C4] text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap shadow-xs"
+            >
+              <Save className="w-4 h-4" />
+              Save Gateway Settings
+            </button>
+          ) : undefined
+        }
+      />
+
       {/* Top Governance & Gateway Contextual Summary Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white rounded-xl border border-[#E8EAF0] p-3 shadow-2xs">

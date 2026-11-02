@@ -3,6 +3,7 @@ import type { Offer } from '../types';
 import { toast } from '../services/toast';
 import { SearchInput } from './ui/SearchInput';
 import { StatusBadge } from './ui/StatusBadge';
+import { PageHeader } from './ui/PageHeader';
 import { Plus, Upload, Ticket } from 'lucide-react';
 
 interface OfferManagementProps {
@@ -63,6 +64,37 @@ export const OfferManagement: React.FC<OfferManagementProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Standard Enterprise Page Header */}
+      <PageHeader
+        title="Offer Management"
+        subtitle="Configure promotional discount codes, validity dates, and voucher terms attached to bulk broadcasts."
+        badge={
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#E8F7F0] text-[#16A36A] border border-[#C8EEDC]">
+            <Ticket className="w-3 h-3" />
+            Voucher Engine Active
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor={fileInputId}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#E5E9F0] bg-white hover:bg-[#FAFBFD] text-xs font-semibold text-[#182338] rounded-lg shadow-2xs transition-colors cursor-pointer"
+            >
+              <Upload className="w-3.5 h-3.5 text-[#718096]" />
+              <span>Import CSV</span>
+              <input id={fileInputId} type="file" accept=".csv" onChange={handleCsv} className="hidden" />
+            </label>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#5269D9] hover:bg-[#4056C4] text-white text-xs font-bold rounded-lg shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create Offer</span>
+            </button>
+          </div>
+        }
+      />
+
       {/* Top Offer Analytics KPI Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white rounded-xl border border-[#E8EAF0] p-3 shadow-2xs">

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import type { AutomationWorkflow } from '../types';
 import { api } from '../services/api';
 import { toast } from '../services/toast';
+import { PageHeader } from './ui/PageHeader';
+import { ConfirmationDialog } from './ui/ConfirmationDialog';
 import {
   Workflow,
   Plus,
@@ -13,6 +15,7 @@ export const AutomationEngine: React.FC = () => {
   const [automations, setAutomations] = useState<AutomationWorkflow[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -48,14 +51,20 @@ export const AutomationEngine: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this automation workflow?')) return;
+  const handleDelete = (id: string) => {
+    setDeleteTargetId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTargetId) return;
     try {
-      await api.deleteAutomation(id);
+      await api.deleteAutomation(deleteTargetId);
       toast.info('Workflow Deleted', { description: 'Automation pipeline removed.' });
+      setDeleteTargetId(null);
       fetchAutomations();
     } catch (err: any) {
       toast.error('Delete Failed', { description: err.message });
+      setDeleteTargetId(null);
     }
   };
 
@@ -111,6 +120,27 @@ export const AutomationEngine: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Standard Enterprise Page Header */}
+      <PageHeader
+        title="Follow-up Automations"
+        subtitle="Configure event-driven and schedule-aware customer journey pipelines with interval delays and fallback actions."
+        badge={
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#E8F7F0] text-[#16A36A] border border-[#C8EEDC]">
+            <Workflow className="w-3 h-3" />
+            Active Automation Engine
+          </span>
+        }
+        actions={
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#5269D9] hover:bg-[#4056C4] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Automation</span>
+          </button>
+        }
+      />
+
       {/* Top Automations Analytics Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white rounded-xl border border-[#E8EAF0] p-3 shadow-2xs">
@@ -379,6 +409,17 @@ export const AutomationEngine: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Standardized Delete Workflow Dialog */}
+      <ConfirmationDialog
+        isOpen={Boolean(deleteTargetId)}
+        title="Delete Automation Workflow"
+        description="Are you sure you want to delete this automation workflow? Inbound triggers will no longer execute follow-up messages for this pipeline."
+        confirmLabel="Delete Workflow"
+        confirmVariant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </div>
   );
 };

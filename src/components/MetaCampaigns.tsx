@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import type { MetaDataResponse, MetaCampaign } from '../types';
 import { api } from '../services/api';
 import { toast } from '../services/toast';
+import { PageHeader } from './ui/PageHeader';
+import { Share2, Plus } from 'lucide-react';
 
 export const MetaCampaigns: React.FC = () => {
   const [data, setData] = useState<MetaDataResponse | null>(null);
@@ -69,6 +71,26 @@ export const MetaCampaigns: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Standard Enterprise Page Header */}
+      <PageHeader
+        title="Meta Campaigns"
+        subtitle="Manage Facebook, Instagram, and Click-to-WhatsApp ad campaigns, audience targeting, and real-time ROAS metrics."
+        badge={
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#E8F7F0] text-[#16A36A] border border-[#C8EEDC]">
+            <Share2 className="w-3 h-3" />
+            Meta Graph API
+          </span>
+        }
+        actions={
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#5269D9] hover:bg-[#4056C4] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Launch Meta Ad</span>
+          </button>
+        }
+      />
       {/* Account Selector & Connect Banner */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-[#E8EAF0] shadow-2xs">
         <div>

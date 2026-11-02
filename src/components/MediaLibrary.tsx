@@ -3,6 +3,8 @@ import type { MediaAsset } from '../types';
 import { api, API_BASE } from '../services/api';
 import { toast } from '../services/toast';
 import { SearchInput } from './ui/SearchInput';
+import { PageHeader } from './ui/PageHeader';
+import { ConfirmationDialog } from './ui/ConfirmationDialog';
 import {
   Video,
   FileText,
@@ -22,6 +24,8 @@ export const MediaLibrary: React.FC = () => {
   const [tags, setTags] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewAsset, setPreviewAsset] = useState<MediaAsset | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MediaAsset | null>(null);
+  const [forceDeleteTarget, setForceDeleteTarget] = useState<{ asset: MediaAsset; message: string } | null>(null);
 
   const fetchMedia = async () => {
     setLoading(true);
@@ -64,23 +68,37 @@ export const MediaLibrary: React.FC = () => {
     }
   };
 
-  const handleDelete = async (asset: MediaAsset) => {
-    if (!confirm(`Are you sure you want to delete ${asset.originalName}?`)) return;
+  const handleDelete = (asset: MediaAsset) => {
+    setDeleteTarget(asset);
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await api.deleteMedia(asset.id);
-      toast.success('Asset Removed', { description: `${asset.originalName} removed successfully.` });
+      await api.deleteMedia(deleteTarget.id);
+      toast.success('Asset Removed', { description: `${deleteTarget.originalName} removed successfully.` });
+      setDeleteTarget(null);
       fetchMedia();
     } catch (err: any) {
       if (err.referenced) {
-        if (confirm(`${err.message}\nDo you still wish to force-delete this asset?`)) {
-          await api.deleteMedia(asset.id, true);
-          toast.success('Asset Force-Deleted', { description: 'Asset force-deleted successfully.' });
-          fetchMedia();
-        }
+        setForceDeleteTarget({ asset: deleteTarget, message: err.message });
       } else {
         toast.error('Delete Failed', { description: err.message || 'Error removing asset.' });
       }
+      setDeleteTarget(null);
+    }
+  };
+
+  const confirmForceDelete = async () => {
+    if (!forceDeleteTarget) return;
+    try {
+      await api.deleteMedia(forceDeleteTarget.asset.id, true);
+      toast.success('Asset Force-Deleted', { description: 'Asset force-deleted successfully.' });
+      setForceDeleteTarget(null);
+      fetchMedia();
+    } catch (err: any) {
+      toast.error('Delete Failed', { description: err.message || 'Error removing asset.' });
+      setForceDeleteTarget(null);
     }
   };
 
@@ -107,6 +125,18 @@ export const MediaLibrary: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Standard Enterprise Page Header */}
+      <PageHeader
+        title="Media Library"
+        subtitle="Durable digital asset repository with SHA-256 verification, instant streaming, and cross-channel compatibility."
+        badge={
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#E8F7F0] text-[#16A36A] border border-[#C8EEDC]">
+            <HardDrive className="w-3 h-3" />
+            Durable Storage
+          </span>
+        }
+      />
+
       {/* Top Contextual Media Analytics Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white rounded-xl border border-[#E8EAF0] p-3 shadow-2xs">
@@ -357,6 +387,28 @@ export const MediaLibrary: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Standardized Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={Boolean(deleteTarget)}
+        title="Delete Media Asset"
+        description={`Are you sure you want to delete "${deleteTarget?.originalName}"? This file will be removed from local durable storage.`}
+        confirmLabel="Delete Asset"
+        confirmVariant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* Force-Delete Referenced Asset Dialog */}
+      <ConfirmationDialog
+        isOpen={Boolean(forceDeleteTarget)}
+        title="Force Delete Referenced Asset"
+        description={`${forceDeleteTarget?.message || 'This asset is currently attached to one or more campaigns or templates.'} Do you still wish to force-delete this asset?`}
+        confirmLabel="Force Delete"
+        confirmVariant="danger"
+        onConfirm={confirmForceDelete}
+        onCancel={() => setForceDeleteTarget(null)}
+      />
     </div>
   );
 };

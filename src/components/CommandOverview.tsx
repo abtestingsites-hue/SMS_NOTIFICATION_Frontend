@@ -351,7 +351,7 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
   const activeTrendPoint = trendHoverIdx !== null ? trendPoints[trendHoverIdx] : null;
 
   return (
-    <div className="h-full flex flex-col justify-between gap-2.5 max-w-[1600px] mx-auto w-full">
+    <div className="w-full max-w-[1600px] mx-auto space-y-4 pb-4">
       {/* Top Section — Compact Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white px-3.5 py-2 rounded-xl border border-[#E8EAF0] shadow-2xs shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">

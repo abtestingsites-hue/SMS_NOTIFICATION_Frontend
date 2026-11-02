@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { InAppNotification, NavModule } from '../types';
 import { api } from '../services/api';
 import { toast } from '../services/toast';
+import { ConfirmationDialog } from './ui/ConfirmationDialog';
 import {
   Bell,
   CheckCircle2,
@@ -37,6 +38,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   const [activeCategory, setActiveCategory] = useState<string>('ALL');
   const [filterUnreadOnly, setFilterUnreadOnly] = useState<boolean>(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -115,14 +117,19 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
     }
   };
 
-  const handleClearAll = async () => {
-    if (!confirm('Clear all notifications from history?')) return;
+  const handleClearAll = () => {
+    setIsClearConfirmOpen(true);
+  };
+
+  const confirmClearAll = async () => {
     try {
       await api.clearAllNotifications();
       toast.info('Notification history cleared');
+      setIsClearConfirmOpen(false);
       onRefresh();
     } catch (err: any) {
       toast.error('Failed to clear notifications', { description: err.message });
+      setIsClearConfirmOpen(false);
     }
   };
 
@@ -356,6 +363,17 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Confirmation Dialog for Clearing Notifications */}
+      <ConfirmationDialog
+        isOpen={isClearConfirmOpen}
+        title="Clear All Notifications"
+        description="Are you sure you want to clear all notifications from history? This action cannot be undone."
+        confirmLabel="Clear All"
+        confirmVariant="danger"
+        onConfirm={confirmClearAll}
+        onCancel={() => setIsClearConfirmOpen(false)}
+      />
     </div>
   );
 };

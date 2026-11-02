@@ -3,17 +3,22 @@ import type { ScheduleItem, Offer } from '../types';
 import { api } from '../services/api';
 import { toast } from '../services/toast';
 import { StatusBadge } from './ui/StatusBadge';
+import { PageHeader } from './ui/PageHeader';
+import { ConfirmationDialog } from './ui/ConfirmationDialog';
 import {
   Plus,
   Play,
   XCircle,
   Lock,
-  CalendarDays
+  CalendarDays,
+  Clock
 } from 'lucide-react';
 
 export const MessageScheduler: React.FC = () => {
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [runTargetId, setRunTargetId] = useState<string | null>(null);
+  const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
 
   const uniqueOffers = useMemo(() => {
     const seen = new Set<string>();
@@ -90,10 +95,14 @@ export const MessageScheduler: React.FC = () => {
     }
   };
 
-  const handleRunNow = async (id: string) => {
-    if (!confirm('Execute this schedule immediately? Idempotency safeguards will apply.')) return;
+  const handleRunNow = (id: string) => {
+    setRunTargetId(id);
+  };
+
+  const confirmRunNow = async () => {
+    if (!runTargetId) return;
     try {
-      const res = await api.runScheduleNow(id);
+      const res = await api.runScheduleNow(runTargetId);
       if (res.success) {
         toast.success('Broadcast Executed', {
           description: `Dispatched to ${res.dispatchedCount} customers (${res.suppressedCount} suppressed by governance).`
@@ -101,20 +110,28 @@ export const MessageScheduler: React.FC = () => {
       } else {
         toast.error('Execution Failed', { description: res.error || 'Runner failed' });
       }
+      setRunTargetId(null);
       fetchSchedulesAndOffers();
     } catch (err: any) {
       toast.error('Run Now Failed', { description: err.message });
+      setRunTargetId(null);
     }
   };
 
-  const handleCancel = async (id: string) => {
-    if (!confirm('Are you sure you want to cancel this scheduled execution?')) return;
+  const handleCancel = (id: string) => {
+    setCancelTargetId(id);
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelTargetId) return;
     try {
-      await api.cancelSchedule(id);
+      await api.cancelSchedule(cancelTargetId);
       toast.info('Schedule Cancelled', { description: 'Scheduled execution cancelled.' });
+      setCancelTargetId(null);
       fetchSchedulesAndOffers();
     } catch (err: any) {
       toast.error('Cancel Failed', { description: err.message });
+      setCancelTargetId(null);
     }
   };
 
@@ -125,6 +142,27 @@ export const MessageScheduler: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Standard Enterprise Page Header */}
+      <PageHeader
+        title="Message Scheduler"
+        subtitle="Manage automated one-time and recurring broadcast timers with distributed lease locking and timezone awareness."
+        badge={
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#EEF1FC] text-[#5269D9] border border-[#D9E0F8]">
+            <Clock className="w-3 h-3" />
+            Background Runner Active
+          </span>
+        }
+        actions={
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#5269D9] hover:bg-[#4056C4] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Schedule</span>
+          </button>
+        }
+      />
+
       {/* Top Scheduler Analytics Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white rounded-xl border border-[#E8EAF0] p-3 shadow-2xs">
@@ -451,6 +489,28 @@ export const MessageScheduler: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog for Immediate Execution */}
+      <ConfirmationDialog
+        isOpen={Boolean(runTargetId)}
+        title="Execute Schedule Now"
+        description="Execute this scheduled broadcast immediately? Telephony dispatches will begin and idempotency safeguards will apply."
+        confirmLabel="Execute Now"
+        confirmVariant="primary"
+        onConfirm={confirmRunNow}
+        onCancel={() => setRunTargetId(null)}
+      />
+
+      {/* Confirmation Dialog for Schedule Cancellation */}
+      <ConfirmationDialog
+        isOpen={Boolean(cancelTargetId)}
+        title="Cancel Scheduled Broadcast"
+        description="Are you sure you want to cancel this scheduled execution? Timers will be released and no messages will be dispatched."
+        confirmLabel="Cancel Schedule"
+        confirmVariant="danger"
+        onConfirm={confirmCancel}
+        onCancel={() => setCancelTargetId(null)}
+      />
     </div>
   );
 };

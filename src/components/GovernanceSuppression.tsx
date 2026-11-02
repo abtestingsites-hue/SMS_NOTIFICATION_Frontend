@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { SuppressionRecord, GovernanceRules } from '../types';
 import { api } from '../services/api';
 import { toast } from '../services/toast';
+import { ConfirmationDialog } from './ui/ConfirmationDialog';
 
 export const GovernanceSuppression: React.FC = () => {
   const [suppressed, setSuppressed] = useState<SuppressionRecord[]>([]);
@@ -9,6 +10,7 @@ export const GovernanceSuppression: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [newPhone, setNewPhone] = useState('');
   const [newReason, setNewReason] = useState('Manual Administrative Opt-Out');
+  const [removeTargetPhone, setRemoveTargetPhone] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -44,14 +46,20 @@ export const GovernanceSuppression: React.FC = () => {
     }
   };
 
-  const handleRemoveSuppression = async (phone: string) => {
-    if (!confirm(`Remove ${phone} from suppression list? They will be eligible for dispatches.`)) return;
+  const handleRemoveSuppression = (phone: string) => {
+    setRemoveTargetPhone(phone);
+  };
+
+  const confirmRemoveSuppression = async () => {
+    if (!removeTargetPhone) return;
     try {
-      await api.removeSuppression(phone);
-      toast.info('Suppression Removed', { description: `Removed ${phone} from suppression list.` });
+      await api.removeSuppression(removeTargetPhone);
+      toast.info('Suppression Removed', { description: `Removed ${removeTargetPhone} from suppression list.` });
+      setRemoveTargetPhone(null);
       fetchData();
     } catch (err: any) {
       toast.error('Remove Suppression Failed', { description: err.message });
+      setRemoveTargetPhone(null);
     }
   };
 
@@ -236,6 +244,17 @@ export const GovernanceSuppression: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Confirmation Dialog for Unsuppressing Phone */}
+      <ConfirmationDialog
+        isOpen={Boolean(removeTargetPhone)}
+        title="Remove From Suppression List"
+        description={`Remove ${removeTargetPhone} from the suppression list? This contact will become eligible for future automated and broadcast dispatches.`}
+        confirmLabel="Remove & Re-enable"
+        confirmVariant="primary"
+        onConfirm={confirmRemoveSuppression}
+        onCancel={() => setRemoveTargetPhone(null)}
+      />
     </div>
   );
 };

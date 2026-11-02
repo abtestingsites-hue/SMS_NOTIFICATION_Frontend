@@ -3,6 +3,8 @@ import type { IntegrationStatusResponse, ProviderStatus } from '../types';
 import { api } from '../services/api';
 import { toast } from '../services/toast';
 import { StatusBadge } from './ui/StatusBadge';
+import { PageHeader } from './ui/PageHeader';
+import { ConfirmationDialog } from './ui/ConfirmationDialog';
 import {
   ShieldCheck,
   KeyRound,
@@ -66,6 +68,7 @@ export const IntegrationConsole: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [verifyingProvider, setVerifyingProvider] = useState<string | null>(null);
   const [editProvider, setEditProvider] = useState<string | null>(null);
+  const [disconnectTarget, setDisconnectTarget] = useState<string | null>(null);
 
   // Form State for modal
   const [twilioSid, setTwilioSid] = useState('');
@@ -130,16 +133,22 @@ export const IntegrationConsole: React.FC = () => {
     }
   };
 
-  const handleDisconnect = async (provider: string) => {
-    if (!confirm(`Are you sure you want to disconnect ${provider.toUpperCase()}? Live dispatches will pause until reconnected.`)) return;
+  const handleDisconnect = (provider: string) => {
+    setDisconnectTarget(provider);
+  };
+
+  const confirmDisconnect = async () => {
+    if (!disconnectTarget) return;
     try {
-      await api.disconnectIntegration(provider);
-      toast.info(`Disconnected ${provider.toUpperCase()}`, {
+      await api.disconnectIntegration(disconnectTarget);
+      toast.info(`Disconnected ${disconnectTarget.toUpperCase()}`, {
         description: 'Gateway dispatches paused until re-authenticated.'
       });
+      setDisconnectTarget(null);
       fetchStatus();
     } catch (err: any) {
       toast.error('Disconnect failed', { description: err.message });
+      setDisconnectTarget(null);
     }
   };
 
@@ -205,25 +214,27 @@ export const IntegrationConsole: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-[#20283A] tracking-tight">Integration Console & Vault</h2>
-          <p className="text-xs text-[#737D90] mt-0.5">
-            Manage zero-trust cryptographic secrets, carrier gateway bindings, and advertising network tokens.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      {/* Standard Enterprise Page Header */}
+      <PageHeader
+        title="Integration Console & Vault"
+        subtitle="Manage zero-trust cryptographic secrets, carrier gateway bindings, and advertising network tokens."
+        badge={
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#E8F7F0] text-[#16A36A] border border-[#C8EEDC]">
+            <ShieldCheck className="w-3 h-3" />
+            AES-256-GCM Vault
+          </span>
+        }
+        actions={
           <button
             onClick={() => fetchStatus(true)}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E8EAF0] text-xs font-semibold text-[#20283A] bg-white hover:bg-[#F7F8FC] cursor-pointer transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E8EAF0] text-xs font-semibold text-[#20283A] bg-white hover:bg-[#F7F8FC] cursor-pointer transition-colors shadow-2xs"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-[#737D90] ${loading ? 'animate-spin' : ''}`} />
             <span>Sync Vault</span>
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Security Architecture Banner */}
       <div className="bg-white rounded-xl border border-[#E8EAF0] p-4.5 shadow-2xs">
@@ -720,6 +731,17 @@ export const IntegrationConsole: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog for Provider Disconnection */}
+      <ConfirmationDialog
+        isOpen={Boolean(disconnectTarget)}
+        title={`Disconnect ${disconnectTarget?.toUpperCase()} Gateway`}
+        description={`Are you sure you want to disconnect ${disconnectTarget?.toUpperCase()}? Live telephony dispatches will pause until credentials are re-authenticated.`}
+        confirmLabel="Disconnect Gateway"
+        confirmVariant="danger"
+        onConfirm={confirmDisconnect}
+        onCancel={() => setDisconnectTarget(null)}
+      />
     </div>
   );
 };

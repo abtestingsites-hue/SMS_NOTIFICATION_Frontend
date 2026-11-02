@@ -5,6 +5,7 @@ import { toast } from '../services/toast';
 import { StatusBadge } from './ui/StatusBadge';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { MediaPickerModal } from './ui/MediaPickerModal';
+import { PageHeader } from './ui/PageHeader';
 import {
   Send,
   MessageSquare,
@@ -371,6 +372,30 @@ export const CampaignConsole: React.FC<CampaignConsoleProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Standard Enterprise Page Header */}
+      <PageHeader
+        title="Campaign Console"
+        subtitle="Configure and execute bulk marketing broadcasts across Cellular SMS and WhatsApp with media attachments."
+        badge={
+          <StatusBadge
+            status={activeCampaign ? activeCampaign.status : 'READY'}
+            size="sm"
+            pulse={activeCampaign?.status === 'PROCESSING'}
+          />
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveNav('builder')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#5269D9] hover:bg-[#4056C4] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+              <span>Visual Builder</span>
+            </button>
+          </div>
+        }
+      />
+
       {/* Top Campaign Performance Summary Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white rounded-xl border border-[#E8EAF0] p-3 shadow-2xs">

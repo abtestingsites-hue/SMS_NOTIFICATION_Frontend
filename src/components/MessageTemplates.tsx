@@ -4,6 +4,7 @@ import { api, API_BASE } from '../services/api';
 import { toast } from '../services/toast';
 import { MediaPickerModal } from './ui/MediaPickerModal';
 import { AITemplateGenerator } from './AITemplateGenerator';
+import { PageHeader } from './ui/PageHeader';
 import {
   Upload,
   FileText,
@@ -211,6 +212,18 @@ export const MessageTemplates: React.FC<MessageTemplatesProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Standard Enterprise Page Header */}
+      <PageHeader
+        title="Message Templates"
+        subtitle="Compose, preview, and save high-converting marketing templates with merge variables, media attachments, and AI generation."
+        badge={
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#EEF1FC] text-[#5269D9] border border-[#D9E0F8]">
+            <Sparkles className="w-3 h-3" />
+            AI Generator Ready
+          </span>
+        }
+      />
+
       {/* Top Contextual Analytics Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white rounded-xl border border-[#E8EAF0] p-3 shadow-2xs">

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import type { GoogleDataResponse } from '../types';
 import { api } from '../services/api';
 import { toast } from '../services/toast';
+import { PageHeader } from './ui';
+import { Plus } from 'lucide-react';
 
 export const GoogleCampaigns: React.FC = () => {
   const [data, setData] = useState<GoogleDataResponse | null>(null);
@@ -62,39 +64,36 @@ export const GoogleCampaigns: React.FC = () => {
 
   return (
     <div className="space-y-6">
-
-      {/* Account Info Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-[#E8EAF0] shadow-2xs">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-sm font-bold text-[#20283A]">Google Ads Manager API</h2>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-              data?.isLive ? 'bg-emerald-50 text-[#16A34A] border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-            }`}>
-              {data?.isLive ? '● Live Google Ads API' : '⚡ Local Sandbox Simulated'}
-            </span>
+      {/* Standardized Page Header */}
+      <PageHeader
+        breadcrumbs={[{ label: 'Ad Networks' }, { label: 'Google Campaigns' }]}
+        title="Google Campaigns & Performance Max"
+        subtitle="High-intent Google Search, Performance Max, Display, and YouTube Video promotional advertising."
+        badge={
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+            data?.isLive ? 'bg-[#E8F7F0] text-[#16A36A] border border-[#C8EEDC]' : 'bg-[#F5F6FA] text-[#718096] border border-[#E5E9F0]'
+          }`}>
+            {data?.isLive ? '● Live Google Ads API' : '⚡ Local Sandbox Simulated'}
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-3">
+            {data?.customerId && (
+              <div className="text-right hidden sm:block">
+                <div className="text-xs font-bold text-[#20283A]">{data?.customerName || 'Enterprise Growth'}</div>
+                <div className="text-[10px] font-mono text-[#737D90]">ID: {data?.customerId}</div>
+              </div>
+            )}
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-[#5269D9] hover:bg-[#4056C4] text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              Create Google Campaign
+            </button>
           </div>
-          <p className="text-xs text-[#737D90]">
-            High-intent Google Search, Performance Max, Display, and YouTube Video promotional advertising.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <div className="text-xs font-bold text-[#20283A]">{data?.customerName || 'Enterprise Growth'}</div>
-            <div className="text-[10px] font-mono text-[#737D90]">ID: {data?.customerId}</div>
-          </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-[#5269D9] hover:bg-[#4056C4] text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Create Google Campaign
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Data Source Transparency Banner */}
       {data?.dataSourceNotice && (

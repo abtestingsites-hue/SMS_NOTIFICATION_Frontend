@@ -350,7 +350,7 @@ export default function App() {
 
         {/* Dynamic Route Content */}
         <main className={`flex-1 min-h-0 w-full mx-auto ${
-          activeNav === 'overview' || activeNav === 'builder'
+          activeNav === 'builder'
             ? 'p-0 overflow-hidden flex flex-col'
             : 'p-4 sm:p-6 lg:p-8 overflow-y-auto'
         }`}>

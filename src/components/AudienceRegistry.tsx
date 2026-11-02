@@ -3,6 +3,7 @@ import type { Customer } from '../types';
 import { api } from '../services/api';
 import { toast } from '../services/toast';
 import { SearchInput } from './ui/SearchInput';
+import { PageHeader } from './ui/PageHeader';
 import {
   Upload,
   Download,
@@ -183,6 +184,37 @@ export const AudienceRegistry: React.FC<AudienceRegistryProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Standard Enterprise Page Header */}
+      <PageHeader
+        title="Audience Registry"
+        subtitle="Manage contact records, E.164 phone normalization, demographic segmentation, and regional language preferences."
+        badge={
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#E8F7F0] text-[#16A36A] border border-[#C8EEDC]">
+            <CheckCircle2 className="w-3 h-3" />
+            E.164 Validated
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportCsv}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E9F0] bg-white hover:bg-[#FAFBFD] text-xs font-semibold text-[#182338] shadow-2xs transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-[#718096]" />
+              <span>Export CSV</span>
+            </button>
+            <button
+              onClick={fetchAudience}
+              disabled={isLoading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E9F0] bg-white hover:bg-[#FAFBFD] text-xs font-semibold text-[#182338] shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-[#718096] ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+          </div>
+        }
+      />
+
       {/* Top Contextual Audience Analytics KPI Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white rounded-xl border border-[#E8EAF0] p-3 shadow-2xs">
