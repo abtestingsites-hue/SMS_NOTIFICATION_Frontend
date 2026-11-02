@@ -62,7 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-1 text-[11px] font-medium text-[#737D90]">
             <span>{current.category}</span>
             <ChevronRight className="w-3 h-3 text-[#A0AEC0]" />
-            <span className="text-[#5269D9] font-semibold">{current.title}</span>
+            <span className="text-[var(--color-primary)] font-semibold">{current.title}</span>
           </div>
           <h2 className="text-sm sm:text-base font-bold text-[#20283A] tracking-tight leading-tight">
             {current.title}
@@ -80,17 +80,17 @@ export const Header: React.FC<HeaderProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search campaigns, contacts..."
-            className="w-full bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg pl-8 pr-3 py-1.5 text-xs text-[#20283A] placeholder-[#737D90] focus:outline-none focus:border-[#5269D9] focus:bg-white transition-all shadow-xs"
+            className="w-full bg-[#F7F8FC] border border-[#E8EAF0] rounded-lg pl-8 pr-3 py-1.5 text-xs text-[#20283A] placeholder-[#737D90] focus:outline-none focus:border-[var(--color-primary)] focus:bg-white transition-all shadow-xs"
           />
         </div>
 
         {/* Integration Status Badges */}
         <button
           onClick={onNavigateIntegrations}
-          className="hidden sm:flex items-center gap-2 bg-[#F7F8FC] hover:bg-[#EEF1FC] border border-[#E8EAF0] px-2.5 py-1.5 rounded-lg cursor-pointer transition-all"
+          className="hidden sm:flex items-center gap-2 bg-[#F7F8FC] hover:bg-[var(--color-primary-light)] border border-[#E8EAF0] px-2.5 py-1.5 rounded-lg cursor-pointer transition-all"
           title="Manage Vault & Integration Credentials"
         >
-          <ShieldCheck className="w-3.5 h-3.5 text-[#5269D9]" />
+          <ShieldCheck className="w-3.5 h-3.5 text-[var(--color-primary)]" />
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#20283A]">
             <span className={`w-1.5 h-1.5 rounded-full ${isTwilioOk ? 'bg-[#16A36A]' : 'bg-[#E5A23B]'}`} />
             <span className="text-[10px] text-[#737D90]">Twilio</span>
@@ -120,7 +120,7 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <Bell className="w-4.5 h-4.5" />
           {unreadNotificationCount > 0 ? (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-[#D94D59] text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
+            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-[var(--color-danger)] text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-[var(--color-surface)] animate-pulse">
               {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
             </span>
           ) : (
@@ -130,7 +130,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Profile Avatar */}
         <div className="flex items-center gap-2 pl-2 border-l border-[#E8EAF0]">
-          <div className="w-8 h-8 rounded-full bg-[#EEF1FC] border border-[#D9E0F8] flex items-center justify-center text-[#5269D9] font-bold text-xs shadow-2xs">
+          <div className="w-8 h-8 rounded-full bg-[var(--color-primary-light)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-primary)] font-bold text-xs shadow-2xs">
             OP
           </div>
         </div>

@@ -94,7 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Brand Header */}
         <div className="h-[56px] lg:h-[60px] flex items-center justify-between px-4 border-b border-[#E8EAF0] shrink-0">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-8 h-8 rounded-lg bg-[#5269D9] flex items-center justify-center text-white shrink-0 shadow-xs">
+            <div className="w-8 h-8 rounded-lg bg-[var(--color-primary)] flex items-center justify-center text-white shrink-0 shadow-xs">
               <Radio className="w-4 h-4" />
             </div>
             {!isCollapsed && (
@@ -147,14 +147,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     title={isCollapsed ? item.label : undefined}
                     className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-[#EEF1FC] text-[#5269D9] font-semibold shadow-2xs'
+                        ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-semibold shadow-2xs'
                         : 'text-[#737D90] hover:bg-[#F7F8FC] hover:text-[#20283A]'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Icon
                         className={`w-4 h-4 shrink-0 transition-colors ${
-                          isActive ? 'text-[#5269D9]' : 'text-[#737D90]'
+                          isActive ? 'text-[var(--color-primary)]' : 'text-[#737D90]'
                         }`}
                       />
                       {!isCollapsed && <span className="truncate">{item.label}</span>}
@@ -163,7 +163,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span
                         className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                           isActive
-                            ? 'bg-[#5269D9] text-white'
+                            ? 'bg-[var(--color-primary)] text-white'
                             : 'bg-[#F1F4F9] text-[#737D90]'
                         }`}
                       >

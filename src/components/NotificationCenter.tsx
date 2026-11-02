@@ -200,17 +200,17 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   const getNotificationIcon = (type: string, category: string) => {
     switch (type) {
       case 'success':
-        return <CheckCircle2 className="w-4 h-4 text-[#8FBC8B] dark:text-[#17B169]" />;
+        return <CheckCircle2 className="w-4 h-4 text-[var(--color-success)]" />;
       case 'error':
-        return <AlertCircle className="w-4 h-4 text-[#ED2939] dark:text-[#FF0000]" />;
+        return <AlertCircle className="w-4 h-4 text-[var(--color-danger)]" />;
       case 'warning':
-        return <AlertTriangle className="w-4 h-4 text-[#FF9D00] dark:text-[#FF5F1F]" />;
+        return <AlertTriangle className="w-4 h-4 text-[var(--color-warning)]" />;
       default:
-        if (category === 'SECURITY') return <Shield className="w-4 h-4 text-[#0000FF] dark:text-[#60A5FA]" />;
-        if (category === 'CAMPAIGN') return <Send className="w-4 h-4 text-[#0000FF] dark:text-[#60A5FA]" />;
-        if (category === 'AUTOMATION') return <Zap className="w-4 h-4 text-[#0000FF] dark:text-[#60A5FA]" />;
-        if (category === 'GOVERNANCE') return <Sliders className="w-4 h-4 text-[#0000FF] dark:text-[#60A5FA]" />;
-        return <Info className="w-4 h-4 text-[#0000FF] dark:text-[#60A5FA]" />;
+        if (category === 'SECURITY') return <Shield className="w-4 h-4 text-[var(--color-primary)]" />;
+        if (category === 'CAMPAIGN') return <Send className="w-4 h-4 text-[var(--color-primary)]" />;
+        if (category === 'AUTOMATION') return <Zap className="w-4 h-4 text-[var(--color-primary)]" />;
+        if (category === 'GOVERNANCE') return <Sliders className="w-4 h-4 text-[var(--color-primary)]" />;
+        return <Info className="w-4 h-4 text-[var(--color-primary)]" />;
     }
   };
 
@@ -238,11 +238,11 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-[var(--color-text-primary)] truncate">Notifications</h2>
                 {unreadCount > 0 ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ED2939]/15 text-[#ED2939] dark:bg-[#FF0000]/20 dark:text-[#FF0000] shrink-0">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--color-danger-light)] text-[var(--color-danger-text)] shrink-0">
                     {unreadCount} new
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#8FBC8B]/20 text-[#2D6A2E] dark:bg-[#17B169]/20 dark:text-[#17B169] shrink-0">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--color-success-light)] text-[var(--color-success-text)] shrink-0">
                     All caught up
                   </span>
                 )}
@@ -259,7 +259,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 type="button"
                 onClick={handleMarkAllRead}
                 title="Mark all as read"
-                className="p-1.5 rounded-lg text-[var(--color-text-secondary)] hover:text-[#0000FF] hover:bg-[var(--color-hover)] transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] hover:bg-[var(--color-hover)] transition-colors cursor-pointer"
               >
                 <CheckCheck className="w-4 h-4" />
               </button>

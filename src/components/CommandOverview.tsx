@@ -271,11 +271,11 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
     });
 
     return [
-      { label: 'Completed', value: completed, color: '#16A36A' },
-      { label: 'Scheduled', value: scheduled, color: '#5269D9' },
-      { label: 'Running', value: running, color: '#4388D8' },
-      { label: 'Pending', value: pending, color: '#E5A23B' },
-      { label: 'Failed', value: failed, color: '#D94D59' }
+      { label: 'Completed', value: completed, color: 'var(--color-success)' },
+      { label: 'Scheduled', value: scheduled, color: 'var(--color-primary)' },
+      { label: 'Running', value: running, color: 'var(--color-primary-hover)' },
+      { label: 'Pending', value: pending, color: 'var(--color-warning)' },
+      { label: 'Failed', value: failed, color: 'var(--color-danger)' }
     ];
   }, [filteredCampaigns]);
 
@@ -395,8 +395,8 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
           value={totalCampaigns.toString()}
           periodComparison={`${campaigns.filter(c => c.status === 'COMPLETED').length} executed`}
           icon={Layers}
-          iconColor="#5269D9"
-          iconBg="#EEF1FC"
+          iconColor="var(--color-primary)"
+          iconBg="var(--color-primary-light)"
           tooltip="Total campaigns scheduled and dispatched within selected timeframe"
           compact
         />
@@ -405,8 +405,8 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
           value={messagesSent.toLocaleString()}
           periodComparison={`${channelMetrics.smsSent} SMS · ${channelMetrics.waSent} WA`}
           icon={Send}
-          iconColor="#4388D8"
-          iconBg="#EEF5FC"
+          iconColor="var(--color-primary)"
+          iconBg="var(--color-primary-light)"
           tooltip="Confirmed outbound cellular SMS and WhatsApp broadcast dispatches"
           compact
         />
@@ -415,8 +415,8 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
           value={messagesDelivered.toLocaleString()}
           periodComparison="Carrier confirmed"
           icon={CheckCircle2}
-          iconColor="#16A36A"
-          iconBg="#E8F7F0"
+          iconColor="var(--color-success)"
+          iconBg="var(--color-success-light)"
           tooltip="Carrier receipt confirmed delivered to recipient handsets"
           compact
         />
@@ -426,8 +426,8 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
           periodComparison={deliveryRate !== null ? 'Carrier confirmed' : 'No dispatches'}
           change={deliveryRate !== null ? +0.3 : undefined}
           icon={TrendingUp}
-          iconColor="#16A36A"
-          iconBg="#E8F7F0"
+          iconColor="var(--color-success)"
+          iconBg="var(--color-success-light)"
           tooltip="Confirmed Delivered / Eligible Dispatched × 100"
           compact
         />
@@ -436,8 +436,8 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
           value={confirmedFailed.toString()}
           periodComparison={pendingReceipts > 0 ? `${pendingReceipts} awaiting receipts` : (failureRate !== null ? `${failureRate}% failure rate` : 'No failures')}
           icon={AlertTriangle}
-          iconColor="#E5A23B"
-          iconBg="#FDF6EC"
+          iconColor="var(--color-warning)"
+          iconBg="var(--color-warning-light)"
           tooltip="Carrier rejections, handset errors, or network timeouts (excludes pending receipts)"
           compact
         />
@@ -446,8 +446,8 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
           value={inboundCount.toString()}
           periodComparison={`${inboundOptOuts} STOP opt-outs`}
           icon={MessageSquare}
-          iconColor="#5269D9"
-          iconBg="#EEF1FC"
+          iconColor="var(--color-primary)"
+          iconBg="var(--color-primary-light)"
           tooltip="Inbound customer responses received via Twilio webhook (non-conversion)"
           compact
         />
@@ -465,8 +465,8 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
             <div className="flex items-center gap-3">
               <ChartLegend
                 items={[
-                  { label: 'Sent', color: '#5269D9' },
-                  { label: 'Delivered', color: '#16A36A', dashed: true }
+                  { label: 'Sent', color: 'var(--color-primary)' },
+                  { label: 'Delivered', color: 'var(--color-success)', dashed: true }
                 ]}
                 size="sm"
               />
@@ -488,8 +488,8 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
             >
               <defs>
                 <linearGradient id="cmdAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#5269D9" stopOpacity="0.20" />
-                  <stop offset="100%" stopColor="#5269D9" stopOpacity="0.0" />
+                  <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.22" />
+                  <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
@@ -518,8 +518,8 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
               {/* Sent Polyline */}
               <polyline
                 fill="none"
-                stroke="#5269D9"
-                strokeWidth="2"
+                stroke="var(--color-primary)"
+                strokeWidth="2.25"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 points={trendPoints
@@ -530,7 +530,7 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
               {/* Delivered Polyline */}
               <polyline
                 fill="none"
-                stroke="#16A36A"
+                stroke="var(--color-success)"
                 strokeWidth="1.75"
                 strokeDasharray="4 3"
                 strokeLinecap="round"
@@ -551,7 +551,7 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
                         y1={0}
                         x2={cx}
                         y2={chartHeight}
-                        stroke="#D9E0F8"
+                        stroke="var(--color-border)"
                         strokeWidth="1"
                         strokeDasharray="2 2"
                       />
@@ -560,8 +560,8 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
                       cx={cx}
                       cy={cy}
                       r={trendHoverIdx === i ? 4.5 : 3}
-                      fill={trendHoverIdx === i ? '#5269D9' : '#FFFFFF'}
-                      stroke="#5269D9"
+                      fill={trendHoverIdx === i ? 'var(--color-primary)' : 'var(--color-surface, #FFFFFF)'}
+                      stroke="var(--color-primary)"
                       strokeWidth="1.5"
                       className="cursor-pointer transition-all"
                       onMouseMove={(e) => {
@@ -583,7 +583,7 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
             {/* Labels */}
             <div className="flex justify-between text-[10px] font-medium text-[#737D90] px-1 mt-1">
               {trendPoints.map((p, i) => (
-                <span key={i} className={trendHoverIdx === i ? 'text-[#5269D9] font-bold' : ''}>
+                <span key={i} className={trendHoverIdx === i ? 'text-[var(--color-primary)] font-bold' : ''}>
                   {p.label}
                 </span>
               ))}
@@ -596,12 +596,12 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
                 y={tooltipPos.y}
                 title={`Period: ${activeTrendPoint.label}`}
                 rows={[
-                  { label: 'Dispatched', value: activeTrendPoint.sent.toLocaleString(), color: '#5269D9' },
-                  { label: 'Delivered', value: activeTrendPoint.delivered.toLocaleString(), color: '#16A36A' },
+                  { label: 'Dispatched', value: activeTrendPoint.sent.toLocaleString(), color: 'var(--color-primary)' },
+                  { label: 'Delivered', value: activeTrendPoint.delivered.toLocaleString(), color: 'var(--color-success)' },
                   {
                     label: 'Delivery Rate',
                     value: activeTrendPoint.sent > 0 ? `${Math.round((activeTrendPoint.delivered / activeTrendPoint.sent) * 100)}%` : 'N/A',
-                    color: '#16A36A'
+                    color: 'var(--color-success)'
                   }
                 ]}
                 visible={trendHoverIdx !== null}
@@ -622,20 +622,20 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
             <div className="bg-[#F7F8FC] p-2 rounded-lg border border-[#E8EAF0] space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-[#20283A] flex items-center gap-1.5 text-[11px]">
-                  <span className="w-2 h-2 rounded-full bg-[#16A36A]" /> WhatsApp Broadcast
+                  <span className="w-2 h-2 rounded-full bg-[var(--color-success)]" /> WhatsApp Broadcast
                 </span>
-                <span className="font-mono font-bold text-[#16A36A] text-[11px]">
+                <span className="font-mono font-bold text-[var(--color-success)] text-[11px]">
                   {channelMetrics.waRate !== null ? `${channelMetrics.waRate}% rate` : 'N/A'}
                 </span>
               </div>
               <div className="flex justify-between text-[10px] text-[#737D90] font-mono">
                 <span>Sent: <strong className="text-[#20283A]">{channelMetrics.waSent}</strong></span>
-                <span>Delivered: <strong className="text-[#16A36A]">{channelMetrics.waDelivered}</strong></span>
-                <span>Failed: <strong className="text-[#E5A23B]">{channelMetrics.waFailed}</strong></span>
+                <span>Delivered: <strong className="text-[var(--color-success)]">{channelMetrics.waDelivered}</strong></span>
+                <span>Failed: <strong className="text-[var(--color-warning)]">{channelMetrics.waFailed}</strong></span>
               </div>
-              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+              <div className="w-full bg-[#E1E5EC] dark:bg-[#242A35] h-1.5 rounded-full overflow-hidden">
                 <div
-                  className="bg-[#16A36A] h-full rounded-full transition-all duration-500"
+                  className="bg-[var(--color-success)] h-full rounded-full transition-all duration-500"
                   style={{ width: `${channelMetrics.waRate !== null ? channelMetrics.waRate : 0}%` }}
                 />
               </div>
@@ -645,20 +645,20 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
             <div className="bg-[#F7F8FC] p-2 rounded-lg border border-[#E8EAF0] space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-[#20283A] flex items-center gap-1.5 text-[11px]">
-                  <span className="w-2 h-2 rounded-full bg-[#5269D9]" /> Cellular SMS Gateway
+                  <span className="w-2 h-2 rounded-full bg-[var(--color-primary)]" /> Cellular SMS Gateway
                 </span>
-                <span className="font-mono font-bold text-[#5269D9] text-[11px]">
+                <span className="font-mono font-bold text-[var(--color-primary)] text-[11px]">
                   {channelMetrics.smsRate !== null ? `${channelMetrics.smsRate}% rate` : 'N/A'}
                 </span>
               </div>
               <div className="flex justify-between text-[10px] text-[#737D90] font-mono">
                 <span>Sent: <strong className="text-[#20283A]">{channelMetrics.smsSent}</strong></span>
-                <span>Delivered: <strong className="text-[#16A36A]">{channelMetrics.smsDelivered}</strong></span>
-                <span>Failed: <strong className="text-[#E5A23B]">{channelMetrics.smsFailed}</strong></span>
+                <span>Delivered: <strong className="text-[var(--color-success)]">{channelMetrics.smsDelivered}</strong></span>
+                <span>Failed: <strong className="text-[var(--color-warning)]">{channelMetrics.smsFailed}</strong></span>
               </div>
-              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+              <div className="w-full bg-[#E1E5EC] dark:bg-[#242A35] h-1.5 rounded-full overflow-hidden">
                 <div
-                  className="bg-[#5269D9] h-full rounded-full transition-all duration-500"
+                  className="bg-[var(--color-primary)] h-full rounded-full transition-all duration-500"
                   style={{ width: `${channelMetrics.smsRate !== null ? channelMetrics.smsRate : 0}%` }}
                 />
               </div>
