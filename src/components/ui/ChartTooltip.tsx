@@ -26,22 +26,22 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
 
   return (
     <div
-      className="absolute z-30 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-2 bg-[#20283A] text-white px-2.5 py-2 rounded-lg shadow-xl text-[11px] min-w-[120px] transition-all duration-75"
+      className="absolute z-30 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-2 bg-[var(--color-surface-elevated,#1E2028)] text-[var(--color-text-primary,#FFFFFF)] border border-[var(--color-border,#2E323D)] px-2.5 py-2 rounded-lg shadow-xl text-[11px] min-w-[120px] transition-all duration-75"
       style={{ left: `${x}px`, top: `${y}px` }}
     >
-      <div className="font-semibold text-slate-300 border-b border-slate-700/80 pb-1 mb-1">
+      <div className="font-semibold text-[var(--color-text-secondary,#C0C0C0)] border-b border-[var(--color-border,#2E323D)] pb-1 mb-1">
         {title}
       </div>
       <div className="space-y-1 font-mono">
         {rows.map((row, i) => (
           <div key={i} className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-1.5 text-slate-300 font-sans">
+            <span className="flex items-center gap-1.5 text-[var(--color-text-secondary,#C0C0C0)] font-sans">
               {row.color && (
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: row.color }} />
               )}
               {row.label}:
             </span>
-            <span className="font-bold text-white">
+            <span className="font-bold text-[var(--color-text-primary,#FFFFFF)]">
               {row.value}{row.unit || ''}
             </span>
           </div>

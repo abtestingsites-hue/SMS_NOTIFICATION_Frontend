@@ -1,6 +1,7 @@
 import React from 'react';
 import type { NavModule, IntegrationStatusResponse } from '../types';
 import { Menu, Search, Bell, ChevronRight, ShieldCheck } from 'lucide-react';
+import { ThemeSwitcher } from './ThemeSwitcher';
 
 interface HeaderProps {
   activeNav: NavModule;
@@ -105,6 +106,9 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-[10px] text-[#737D90]">Google</span>
           </div>
         </button>
+
+        {/* Global Enterprise Theme Switcher */}
+        <ThemeSwitcher />
 
         {/* Notification Bell */}
         <button

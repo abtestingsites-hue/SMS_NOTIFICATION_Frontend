@@ -501,7 +501,7 @@ export const CommandOverview: React.FC<CommandOverviewProps> = ({
                   y1={y}
                   x2={chartWidth}
                   y2={y}
-                  stroke="#F1F4F9"
+                  stroke="var(--color-chart-grid, #E5E7EB)"
                   strokeWidth="1"
                   strokeDasharray="4 4"
                 />

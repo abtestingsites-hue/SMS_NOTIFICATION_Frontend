@@ -18,3 +18,4 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = (props) => 
 };
 
 export { ConfirmDialog };
+

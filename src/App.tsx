@@ -3,6 +3,7 @@ import type { NavModule, IntegrationStatusResponse, Campaign, Offer, InAppNotifi
 import { api } from './services/api';
 import { toast } from './services/toast';
 import { Toaster } from 'sonner';
+import { useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { NotificationCenter } from './components/NotificationCenter';
@@ -41,6 +42,7 @@ export default function App() {
   };
 
   const [activeNav, setActiveNav] = useState<NavModule>(getInitialNav);
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     window.location.hash = activeNav;
@@ -310,9 +312,9 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#F6F7FB] text-[#20283A] font-sans flex antialiased">
-      {/* Global Centralized Toaster (Phase 15 Addendum) */}
-      <Toaster position="top-right" richColors closeButton theme="light" />
+    <div className="h-screen w-screen overflow-hidden bg-[var(--color-background,#FFFFFF)] text-[var(--color-text-primary,#000000)] font-sans flex antialiased transition-colors duration-150">
+      {/* Global Centralized Toaster */}
+      <Toaster position="top-right" richColors closeButton theme={resolvedTheme} />
 
       {/* Persistent Notification Center Drawer */}
       <NotificationCenter
